@@ -345,7 +345,7 @@ class _ChatScreenState extends State<ChatScreen> {
               color: Colors.white,
               width: double.infinity,
               child: const Text(
-                "Bot is typing...",
+                "Salma is typing...",
                 style: TextStyle(
                   color: Colors.grey,
                   fontStyle: FontStyle.italic,
