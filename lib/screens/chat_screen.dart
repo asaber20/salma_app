@@ -111,7 +111,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final response = await http.get(
         Uri.parse(
           'https://n8n.srv1348343.hstgr.cloud/webhook/physical_inventory',
-        ),
+        ).replace(queryParameters: {'imessage': text}),
         headers: {'authorization': basicAuth},
       );
 
@@ -136,6 +136,7 @@ class _ChatScreenState extends State<ChatScreen> {
               List<Map<String, dynamic>> parsedItems = [];
               Set<String> branchSet = {};
               Set<String> segmentSet = {};
+              Set<String> stSet = {};
               Set<String> dateSet = {};
 
               int idx = 1;
@@ -170,13 +171,20 @@ class _ChatScreenState extends State<ChatScreen> {
                     hourLabel = "${hourInt.toString().padLeft(2, '0')}:00";
                   }
 
+                  String rawSt = item['ST']?.toString().trim() ?? 'Ambient';
+                  String st = (rawSt.toLowerCase() == 'dry' || rawSt.isEmpty)
+                      ? 'Ambient'
+                      : rawSt;
+
                   branchSet.add(branch);
                   segmentSet.add(segment);
+                  stSet.add(st);
                   dateSet.add(normDate);
 
                   parsedItems.add({
                     'branch': branch,
                     'segment': segment,
+                    'st': st,
                     'bins': bins,
                     'countBins': countBins,
                     'date': normDate,
@@ -192,6 +200,10 @@ class _ChatScreenState extends State<ChatScreen> {
               final sortedSegments = segmentSet.toList()
                 ..sort((a, b) => sortWithPreferredOrder(a, b, preferredSegmentOrder));
 
+              const List<String> preferredStOrder = ['Ambient', 'Cold'];
+              final sortedStList = stSet.toList()
+                ..sort((a, b) => sortWithPreferredOrder(a, b, preferredStOrder));
+
               final now = DateTime.now();
 
               final dashboardMessage = ChatMessage(
@@ -203,6 +215,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   'rawItems': parsedItems,
                   'branches': sortedBranches,
                   'segments': sortedSegments,
+                  'stList': sortedStList,
                   'dates': dateSet.toList()..sort(),
                 },
               );
@@ -415,23 +428,25 @@ class _ChatScreenState extends State<ChatScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
       color: Colors.transparent, // Parent background
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(24.0),
+                borderRadius: BorderRadius.circular(28.0),
                 border: Border.all(color: Colors.grey.shade300),
               ),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const SizedBox(width: 8.0),
-                  IconButton(
-                    icon: const Icon(Icons.bolt, color: Color(0xFF075E54)),
-                    onPressed: () => _showQuickMenu(context),
+                  const SizedBox(width: 6.0),
+                  LiquidRefreshButton(
+                    isLoading: _isTyping,
+                    onPressed: () => _handleSubmitted(
+                        "Last update for the Annual Physical Inventory"),
                   ),
+                  const SizedBox(width: 4.0),
                   Expanded(
                     child: TextField(
                       controller: _textController,
@@ -441,7 +456,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       decoration: const InputDecoration(
                         hintText: 'Type a message',
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 10.0),
+                        contentPadding: EdgeInsets.symmetric(
+                            vertical: 10.0, horizontal: 8.0),
                       ),
                     ),
                   ),
@@ -459,7 +475,7 @@ class _ChatScreenState extends State<ChatScreen> {
           const SizedBox(width: 8.0),
           Container(
             decoration: const BoxDecoration(
-              color: Color(0xFF075E54), // WhatsApp Teal
+              color: Color(0xFF303489),
               shape: BoxShape.circle,
             ),
             child: IconButton(
@@ -530,174 +546,116 @@ class _ChatScreenState extends State<ChatScreen> {
       },
     );
   }
+}
 
-  void _showQuickMenu(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 24),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const Text(
-                  "Quick Actions",
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF075E54),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                GridView.count(
-                  shrinkWrap: true,
-                  crossAxisCount: 3,
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  childAspectRatio: 0.85,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    _buildQuickActionItem(
-                      context,
-                      'Revenue Insights',
-                      Icons.bar_chart_rounded,
-                      Colors.green,
-                    ),
-                    _buildQuickActionItem(
-                      context,
-                      'Stock Insights',
-                      Icons.inventory_2_rounded,
-                      Colors.blue,
-                    ),
-                    _buildQuickActionItem(
-                      context,
-                      'Collections',
-                      Icons.payments_rounded,
-                      Colors.orange,
-                    ),
-                    _buildQuickActionItem(
-                      context,
-                      'Trading POs',
-                      Icons.shopping_cart_rounded,
-                      Colors.deepPurple,
-                    ),
-                    _buildQuickActionItem(
-                      context,
-                      'Non Trade POs',
-                      Icons.receipt_long_rounded,
-                      Colors.teal,
-                    ),
-                    _buildQuickActionItem(
-                      context,
-                      'Approvals',
-                      Icons.approval_rounded,
-                      Colors.redAccent,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
+class LiquidRefreshButton extends StatefulWidget {
+  final VoidCallback onPressed;
+  final bool isLoading;
+
+  const LiquidRefreshButton({
+    super.key,
+    required this.onPressed,
+    this.isLoading = false,
+  });
+
+  @override
+  State<LiquidRefreshButton> createState() => _LiquidRefreshButtonState();
+}
+
+class _LiquidRefreshButtonState extends State<LiquidRefreshButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _rotationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _rotationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant LiquidRefreshButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isLoading && !_rotationController.isAnimating) {
+      _rotationController.repeat();
+    } else if (!widget.isLoading && _rotationController.isAnimating) {
+      _rotationController.stop();
+      _rotationController.reset();
+    }
+  }
+
+  @override
+  void dispose() {
+    _rotationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          _rotationController.forward(from: 0.0);
+          widget.onPressed();
+        },
+        borderRadius: BorderRadius.circular(20),
+        splashColor: const Color(0xFF3CCEFF).withValues(alpha: 0.3),
+        highlightColor: const Color(0xFF8045DD).withValues(alpha: 0.2),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF303489), // Deep Navy
+                Color(0xFF8045DD), // Purple
+                Color(0xFF2659E4), // Royal Blue
               ],
             ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildQuickActionItem(
-    BuildContext context,
-    String title,
-    IconData icon,
-    Color color,
-  ) {
-    return InkWell(
-      onTap: () {
-        Navigator.pop(context);
-        if (title == 'Revenue Insights') {
-          _handleRevenueInsights();
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Executing: $title'),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF8045DD).withValues(alpha: 0.35),
+                blurRadius: 8,
+                spreadRadius: 1,
+                offset: const Offset(0, 2),
               ),
-            ),
-          );
-        }
-      },
-      borderRadius: BorderRadius.circular(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(icon, color: color, size: 28),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
+            ],
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.35),
+              width: 1.2,
             ),
           ),
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RotationTransition(
+                turns: _rotationController,
+                child: const Icon(
+                  Icons.autorenew_rounded,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Text(
+                "Sync",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
-  }
-
-  void _handleRevenueInsights() {
-    final now = DateTime.now();
-
-    final barChartMessage = ChatMessage(
-      text: "Revenue by Segment",
-      isUser: false,
-      timestamp: now,
-      type: ChatMessageType.barChart,
-      chartData: {
-        "Pharma Revenue": 400.0,
-        "Health Tech": 90.0,
-        "Animal Health": 75.0,
-      },
-    );
-
-    final progressMessage = ChatMessage(
-      text: "Overall Achievement",
-      isUser: false,
-      timestamp: now.add(const Duration(milliseconds: 100)),
-      type: ChatMessageType.progressCircle,
-      chartData: {"percentage": 0.85, "label": "Revenue Achievement is 85%"},
-    );
-
-    setState(() {
-      _messages.insert(0, barChartMessage);
-      _messages.insert(0, progressMessage);
-    });
-    _saveMessages();
   }
 }
 

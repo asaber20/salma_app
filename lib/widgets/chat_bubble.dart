@@ -789,6 +789,7 @@ class _PhysicalInventoryDashboardWidgetState
     extends State<PhysicalInventoryDashboardWidget> {
   String _selectedBranch = 'All';
   String _selectedSegment = 'All';
+  String _selectedSt = 'All';
   String? _selectedDate;
 
   @override
@@ -817,8 +818,13 @@ class _PhysicalInventoryDashboardWidgetState
         (widget.chartData['segments'] as List? ?? []).map((e) => e.toString()).toList()
           ..sort((a, b) => kSortWithPreferredOrder(a, b, kPreferredSegmentOrder));
 
+    final List<String> rawStList =
+        (widget.chartData['stList'] as List? ?? []).map((e) => e.toString()).toList();
+
     final List<String> availableBranches = ['All', ...rawBranches];
     final List<String> availableSegments = ['All', ...rawSegments];
+    final List<String> availableStList =
+        ['All', ...(rawStList.isNotEmpty ? rawStList : ['Ambient', 'Cold'])];
     final List<String> availableDates =
         (widget.chartData['dates'] as List? ?? []).map((e) => e.toString()).toList();
 
@@ -942,11 +948,64 @@ class _PhysicalInventoryDashboardWidgetState
               }).toList(),
             ),
           ),
+          const SizedBox(height: 8),
+        ],
+
+        // 3. Storage Condition (ST) Filter
+        if (availableStList.length > 1) ...[
+          Row(
+            children: const [
+              Icon(Icons.thermostat_rounded, size: 13, color: Color(0xFF2659E4)),
+              SizedBox(width: 4),
+              Text(
+                "Storage Filter:",
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2659E4)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: availableStList.map((stName) {
+                final isSelected = stName == _selectedSt;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6.0),
+                  child: FilterChip(
+                    label: Text(
+                      stName == 'All' ? 'All Storage' : stName,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
+                        color: isSelected ? Colors.white : const Color(0xFF33333D),
+                      ),
+                    ),
+                    selected: isSelected,
+                    selectedColor: const Color(0xFF2659E4),
+                    backgroundColor: Colors.grey.shade100,
+                    showCheckmark: false,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() {
+                          _selectedSt = stName;
+                        });
+                      }
+                    },
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
           const SizedBox(height: 12),
         ],
 
         // Active Filter Summary Badge
-        if (_selectedBranch != 'All' || _selectedSegment != 'All')
+        if (_selectedBranch != 'All' ||
+            _selectedSegment != 'All' ||
+            _selectedSt != 'All')
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             margin: const EdgeInsets.only(bottom: 12),
@@ -960,9 +1019,12 @@ class _PhysicalInventoryDashboardWidgetState
                 const Icon(Icons.filter_alt_rounded, size: 14, color: Color(0xFF303489)),
                 const SizedBox(width: 4),
                 Text(
-                  "Filters: ${_selectedBranch != 'All' ? 'Branch: $_selectedBranch' : ''}"
-                  "${(_selectedBranch != 'All' && _selectedSegment != 'All') ? ' | ' : ''}"
-                  "${_selectedSegment != 'All' ? 'Segment: $_selectedSegment' : ''}",
+                  "Filters: "
+                  "${_selectedBranch != 'All' ? 'Branch: $_selectedBranch' : ''}"
+                  "${(_selectedBranch != 'All' && (_selectedSegment != 'All' || _selectedSt != 'All')) ? ' | ' : ''}"
+                  "${_selectedSegment != 'All' ? 'Segment: $_selectedSegment' : ''}"
+                  "${(_selectedSegment != 'All' && _selectedSt != 'All') ? ' | ' : ''}"
+                  "${_selectedSt != 'All' ? 'Storage: $_selectedSt' : ''}",
                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF303489)),
                 ),
               ],
@@ -1044,9 +1106,13 @@ class _PhysicalInventoryDashboardWidgetState
               final matchingItems = rawItems.where((item) {
                 final b = item['branch']?.toString() ?? '';
                 final s = item['segment']?.toString() ?? '';
+                final st = item['st']?.toString() ?? '';
+
                 final matchesB = b == branchName;
                 final matchesS = _selectedSegment == 'All' || s == _selectedSegment;
-                return matchesB && matchesS;
+                final matchesSt = _selectedSt == 'All' || st == _selectedSt;
+
+                return matchesB && matchesS && matchesSt;
               }).toList();
 
               int totalBins = matchingItems.fold<int>(0, (sum, e) => sum + (e['bins'] as int));
@@ -1340,9 +1406,13 @@ class _PhysicalInventoryDashboardWidgetState
             final matchingItems = rawItems.where((item) {
               final b = item['branch']?.toString() ?? '';
               final s = item['segment']?.toString() ?? '';
+              final st = item['st']?.toString() ?? '';
+
               final matchesS = s == segmentName;
               final matchesB = _selectedBranch == 'All' || b == _selectedBranch;
-              return matchesS && matchesB;
+              final matchesSt = _selectedSt == 'All' || st == _selectedSt;
+
+              return matchesS && matchesB && matchesSt;
             }).toList();
 
             int totalBins = matchingItems.fold<int>(0, (sum, e) => sum + (e['bins'] as int));
@@ -1419,13 +1489,15 @@ class _PhysicalInventoryDashboardWidgetState
     final matchingItems = rawItems.where((item) {
       final b = item['branch']?.toString() ?? '';
       final s = item['segment']?.toString() ?? '';
+      final st = item['st']?.toString() ?? '';
       final d = item['date']?.toString() ?? '';
 
       final matchesB = _selectedBranch == 'All' || b == _selectedBranch;
       final matchesS = _selectedSegment == 'All' || s == _selectedSegment;
+      final matchesSt = _selectedSt == 'All' || st == _selectedSt;
       final matchesD = dates.length <= 1 || d == activeDate;
 
-      return matchesB && matchesS && matchesD;
+      return matchesB && matchesS && matchesSt && matchesD;
     }).toList();
 
     Map<String, double> hourlyData = {};
@@ -1515,7 +1587,7 @@ class _PhysicalInventoryDashboardWidgetState
           height: 205,
           width: double.infinity,
           child: CustomPaint(
-            key: ValueKey("line_chart_${activeDate}_${_selectedBranch}_$_selectedSegment"),
+            key: ValueKey("line_chart_${activeDate}_${_selectedBranch}_${_selectedSegment}_$_selectedSt"),
             painter: HourlyLineChartPainter(sortedHourlyData),
           ),
         ),
