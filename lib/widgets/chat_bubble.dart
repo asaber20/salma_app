@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import '../models/chat_message.dart';
 
 const List<Color> kChartPalette = [
@@ -9,6 +10,38 @@ const List<Color> kChartPalette = [
   Color(0xFF33333D), // Dark Charcoal
 ];
 
+const List<String> kPreferredBranchOrder = [
+  'Riyadh',
+  'Dammam',
+  'Jeddah',
+  'Khamis Mushit',
+  'Khamis Mushait',
+];
+
+const List<String> kPreferredSegmentOrder = [
+  'Human Pharma',
+  'Pharma',
+  'Animal Health',
+  'Animal health',
+  'Health Tech',
+  'Health tech',
+];
+
+int kSortWithPreferredOrder(String a, String b, List<String> preferredOrder) {
+  int idxA = preferredOrder.indexWhere((p) => p.toLowerCase() == a.toLowerCase());
+  int idxB = preferredOrder.indexWhere((p) => p.toLowerCase() == b.toLowerCase());
+
+  if (idxA != -1 && idxB != -1) {
+    return idxA.compareTo(idxB);
+  } else if (idxA != -1) {
+    return -1;
+  } else if (idxB != -1) {
+    return 1;
+  } else {
+    return a.compareTo(b);
+  }
+}
+
 class ChatBubble extends StatelessWidget {
   final ChatMessage message;
 
@@ -16,15 +49,25 @@ class ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDashboard = message.type == ChatMessageType.physicalDashboard;
+
     return Align(
       alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.88,
+          maxWidth: isDashboard
+              ? MediaQuery.of(context).size.width * 0.96
+              : MediaQuery.of(context).size.width * 0.88,
         ),
         child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+          margin: EdgeInsets.symmetric(
+            vertical: 4,
+            horizontal: isDashboard ? 2 : 8,
+          ),
+          padding: EdgeInsets.symmetric(
+            vertical: 12,
+            horizontal: isDashboard ? 12 : 14,
+          ),
           decoration: BoxDecoration(
             color: message.isUser ? const Color(0xFFDCF8C6) : Colors.white,
             borderRadius: BorderRadius.only(
@@ -431,7 +474,7 @@ class HourlyLineChartPainter extends CustomPainter {
     const double leftPadding = 30.0;
     const double rightPadding = 20.0;
     const double topPadding = 25.0;
-    const double bottomPadding = 30.0;
+    const double bottomPadding = 45.0;
 
     final double chartWidth = size.width - leftPadding - rightPadding;
     final double chartHeight = size.height - topPadding - bottomPadding;
@@ -488,13 +531,21 @@ class HourlyLineChartPainter extends CustomPainter {
 
       textPainter.text = TextSpan(
         text: keys[i],
-        style: const TextStyle(fontSize: 10, color: Color(0xFF33333D), fontWeight: FontWeight.w500),
+        style: const TextStyle(
+            fontSize: 9.5,
+            color: Color(0xFF33333D),
+            fontWeight: FontWeight.w600),
       );
       textPainter.layout();
+
+      canvas.save();
+      canvas.translate(x, size.height - bottomPadding + 6);
+      canvas.rotate(-math.pi / 2);
       textPainter.paint(
         canvas,
-        Offset(x - textPainter.width / 2, size.height - bottomPadding + 8),
+        Offset(-textPainter.width, -textPainter.height / 2),
       );
+      canvas.restore();
     }
 
     if (points.length > 1) {
@@ -698,7 +749,7 @@ class _DateHourlyLineChartWidgetState
           ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 185,
+          height: 205,
           width: double.infinity,
           child: CustomPaint(
             painter: HourlyLineChartPainter(hourlyData),
@@ -757,14 +808,17 @@ class _PhysicalInventoryDashboardWidgetState
   @override
   Widget build(BuildContext context) {
     final rawItems = _getRawItems();
-    final List<String> availableBranches = [
-      'All',
-      ...(widget.chartData['branches'] as List? ?? []).map((e) => e.toString())
-    ];
-    final List<String> availableSegments = [
-      'All',
-      ...(widget.chartData['segments'] as List? ?? []).map((e) => e.toString())
-    ];
+
+    final List<String> rawBranches =
+        (widget.chartData['branches'] as List? ?? []).map((e) => e.toString()).toList()
+          ..sort((a, b) => kSortWithPreferredOrder(a, b, kPreferredBranchOrder));
+
+    final List<String> rawSegments =
+        (widget.chartData['segments'] as List? ?? []).map((e) => e.toString()).toList()
+          ..sort((a, b) => kSortWithPreferredOrder(a, b, kPreferredSegmentOrder));
+
+    final List<String> availableBranches = ['All', ...rawBranches];
+    final List<String> availableSegments = ['All', ...rawSegments];
     final List<String> availableDates =
         (widget.chartData['dates'] as List? ?? []).map((e) => e.toString()).toList();
 
@@ -1458,7 +1512,7 @@ class _PhysicalInventoryDashboardWidgetState
         ],
         const SizedBox(height: 12),
         SizedBox(
-          height: 185,
+          height: 205,
           width: double.infinity,
           child: CustomPaint(
             key: ValueKey("line_chart_${activeDate}_${_selectedBranch}_$_selectedSegment"),

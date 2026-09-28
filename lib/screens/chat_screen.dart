@@ -6,6 +6,38 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/chat_message.dart';
 import '../widgets/chat_bubble.dart';
 
+const List<String> preferredBranchOrder = [
+  'Riyadh',
+  'Dammam',
+  'Jeddah',
+  'Khamis Mushit',
+  'Khamis Mushait',
+];
+
+const List<String> preferredSegmentOrder = [
+  'Human Pharma',
+  'Pharma',
+  'Animal Health',
+  'Animal health',
+  'Health Tech',
+  'Health tech',
+];
+
+int sortWithPreferredOrder(String a, String b, List<String> preferredOrder) {
+  int idxA = preferredOrder.indexWhere((p) => p.toLowerCase() == a.toLowerCase());
+  int idxB = preferredOrder.indexWhere((p) => p.toLowerCase() == b.toLowerCase());
+
+  if (idxA != -1 && idxB != -1) {
+    return idxA.compareTo(idxB);
+  } else if (idxA != -1) {
+    return -1;
+  } else if (idxB != -1) {
+    return 1;
+  } else {
+    return a.compareTo(b);
+  }
+}
+
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
@@ -154,6 +186,12 @@ class _ChatScreenState extends State<ChatScreen> {
                 }
               }
 
+              final sortedBranches = branchSet.toList()
+                ..sort((a, b) => sortWithPreferredOrder(a, b, preferredBranchOrder));
+
+              final sortedSegments = segmentSet.toList()
+                ..sort((a, b) => sortWithPreferredOrder(a, b, preferredSegmentOrder));
+
               final now = DateTime.now();
 
               final dashboardMessage = ChatMessage(
@@ -163,8 +201,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 type: ChatMessageType.physicalDashboard,
                 chartData: {
                   'rawItems': parsedItems,
-                  'branches': branchSet.toList()..sort(),
-                  'segments': segmentSet.toList()..sort(),
+                  'branches': sortedBranches,
+                  'segments': sortedSegments,
                   'dates': dateSet.toList()..sort(),
                 },
               );
