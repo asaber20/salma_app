@@ -105,14 +105,14 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     _saveMessages();
 
-    String basicAuth =
-        'Basic ${base64Encode(utf8.encode('asaber:Asaber@1234'))}';
+    String bearerToken =
+        'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxNTk2MzIiLCJuYW1lIjoiQWhtZWQgU2FiZXIiLCJhZG1pbiI6dHJ1ZSwiaXNfc2FiZXIiOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.ULGyy3ePlq0QEGjMDRJzT7Jop7TQ4Rjw3Bp6TcFdTkM';
     try {
       final response = await http.get(
         Uri.parse(
           'https://n8n.srv1348343.hstgr.cloud/webhook/physical_inventory',
         ).replace(queryParameters: {'imessage': text}),
-        headers: {'authorization': basicAuth},
+        headers: {'authorization': bearerToken},
       );
 
       if (response.statusCode == 200) {
