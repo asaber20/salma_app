@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/chat_message.dart';
-import '../widgets/chat_bubble.dart';
+import '../widgets/chat_physical_inventory_report.dart';
 
 const List<String> preferredBranchOrder = [
   'Riyadh',
