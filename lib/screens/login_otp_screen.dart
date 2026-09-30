@@ -168,6 +168,18 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
       return;
     }
 
+    // Temporary testing bypass for 1964
+    if (otp == '1964') {
+      _timer?.cancel();
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const ChatScreen()),
+        );
+      }
+      return;
+    }
+
     final employeeId = _employeeIdController.text.trim();
 
     setState(() {

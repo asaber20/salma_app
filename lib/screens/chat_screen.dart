@@ -57,6 +57,20 @@ class _ChatScreenState extends State<ChatScreen> {
     _loadMessages();
   }
 
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            0.0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    }
+  }
+
   Future<void> _loadMessages() async {
     final prefs = await SharedPreferences.getInstance();
     final String? messagesJson = prefs.getString('chat_history');
@@ -104,6 +118,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _isTyping = true;
     });
     _saveMessages();
+    _scrollToBottom();
 
     String bearerToken =
         'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxNTk2MzIiLCJuYW1lIjoiQWhtZWQgU2FiZXIiLCJhZG1pbiI6dHJ1ZSwiaXNfc2FiZXIiOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.ULGyy3ePlq0QEGjMDRJzT7Jop7TQ4Rjw3Bp6TcFdTkM';
@@ -225,6 +240,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   _messages.insert(0, dashboardMessage);
                 });
                 _saveMessages();
+                _scrollToBottom();
               }
             } else {
               for (var item in data) {
@@ -288,6 +304,7 @@ class _ChatScreenState extends State<ChatScreen> {
               }
             });
             _saveMessages();
+            _scrollToBottom();
           }
         } catch (e) {
           // If parsing fails (e.g. raw text), just show raw body
@@ -303,6 +320,7 @@ class _ChatScreenState extends State<ChatScreen> {
               );
             });
             _saveMessages();
+            _scrollToBottom();
           }
         }
       } else {
