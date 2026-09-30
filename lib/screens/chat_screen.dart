@@ -39,7 +39,9 @@ int sortWithPreferredOrder(String a, String b, List<String> preferredOrder) {
 }
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+  final String employeeId;
+
+  const ChatScreen({super.key, this.employeeId = ''});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -126,7 +128,10 @@ class _ChatScreenState extends State<ChatScreen> {
       final response = await http.get(
         Uri.parse(
           'https://n8n.srv1348343.hstgr.cloud/webhook/physical_inventory',
-        ).replace(queryParameters: {'imessage': text}),
+        ).replace(queryParameters: {
+          'imessage': text,
+          'employee_id': widget.employeeId,
+        }),
         headers: {'authorization': bearerToken},
       );
 

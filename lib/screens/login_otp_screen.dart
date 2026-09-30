@@ -168,19 +168,19 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
       return;
     }
 
+    final employeeId = _employeeIdController.text.trim();
+
     // Temporary testing bypass for 1964
     if (otp == '1964') {
       _timer?.cancel();
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const ChatScreen()),
+          MaterialPageRoute(builder: (_) => ChatScreen(employeeId: employeeId)),
         );
       }
       return;
     }
-
-    final employeeId = _employeeIdController.text.trim();
 
     setState(() {
       _isVerifying = true;
@@ -220,7 +220,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
           if (mounted) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => const ChatScreen()),
+              MaterialPageRoute(builder: (_) => ChatScreen(employeeId: employeeId)),
             );
           }
         } else {
