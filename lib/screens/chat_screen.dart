@@ -150,7 +150,9 @@ class _ChatScreenState extends State<ChatScreen> {
           if (data is List) {
             bool isPhysicalInventory = data.isNotEmpty &&
                 data.first is Map &&
-                (data.first as Map).containsKey('BRANCH');
+                ((data.first as Map).containsKey('BRANCH') ||
+                    (data.first as Map).containsKey('branch') ||
+                    (data.first as Map).containsKey('segment'));
 
             if (isPhysicalInventory) {
               List<Map<String, dynamic>> parsedItems = [];
@@ -162,18 +164,27 @@ class _ChatScreenState extends State<ChatScreen> {
               int idx = 1;
               for (var item in data) {
                 if (item is Map) {
-                  String branch =
-                      item['BRANCH']?.toString().trim() ?? 'Unknown Branch';
-                  String segment =
-                      item['SEGMENT']?.toString().trim() ?? 'General';
-                  int bins =
-                      int.tryParse(item['BINS']?.toString() ?? '0') ?? 0;
-                  int countBins =
-                      int.tryParse(item['COUNT_BINS']?.toString() ?? '0') ??
-                          0;
+                  String branch = item['branch']?.toString().trim() ??
+                      item['BRANCH']?.toString().trim() ??
+                      'Unknown Branch';
+                  String segment = item['segment']?.toString().trim() ??
+                      item['SEGMENT']?.toString().trim() ??
+                      'General';
+                  int bins = int.tryParse(item['bins']?.toString() ??
+                          item['BINS']?.toString() ??
+                          '0') ??
+                      0;
+                  int countBins = int.tryParse(item['count_bins']?.toString() ??
+                          item['COUNT_BINS']?.toString() ??
+                          '0') ??
+                      0;
 
-                  String upDate = item['UP_DATE']?.toString().trim() ?? '';
-                  String upTime = item['UP_TIME']?.toString().trim() ?? '';
+                  String upDate = item['up_date']?.toString().trim() ??
+                      item['UP_DATE']?.toString().trim() ??
+                      '';
+                  String upTime = item['up_time']?.toString().trim() ??
+                      item['UP_TIME']?.toString().trim() ??
+                      '';
 
                   String normDate = upDate.isEmpty
                       ? DateTime.now().toIso8601String().split('T').first
@@ -191,10 +202,10 @@ class _ChatScreenState extends State<ChatScreen> {
                     hourLabel = "${hourInt.toString().padLeft(2, '0')}:00";
                   }
 
-                  String rawSt = item['ST']?.toString().trim() ?? 'Ambient';
-                  String st = (rawSt.toLowerCase() == 'dry' || rawSt.isEmpty)
-                      ? 'Ambient'
-                      : rawSt;
+                  String rawSt = item['st']?.toString().trim() ??
+                      item['ST']?.toString().trim() ??
+                      'Dry';
+                  String st = rawSt.isEmpty ? 'Dry' : rawSt;
 
                   branchSet.add(branch);
                   segmentSet.add(segment);
@@ -220,7 +231,7 @@ class _ChatScreenState extends State<ChatScreen> {
               final sortedSegments = segmentSet.toList()
                 ..sort((a, b) => sortWithPreferredOrder(a, b, preferredSegmentOrder));
 
-              const List<String> preferredStOrder = ['Ambient', 'Cold'];
+              const List<String> preferredStOrder = ['Dry', 'Cold'];
               final sortedStList = stSet.toList()
                 ..sort((a, b) => sortWithPreferredOrder(a, b, preferredStOrder));
 
