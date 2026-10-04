@@ -88239,7 +88239,7 @@ s.toString
 A.aG_(B.k,new A.ajP(this),s,!1,B.OH,t.z)},
 ta(a,b,c){var s=null,r=A.bG(12),q=A.b([new A.cF(0,B.bd,c.dh(0.2),B.vj,6)],t.E),p=A.j5(c.dh(0.3),1.2)
 q=A.bW(s,A.oP(b,c,s,22),B.o,s,s,new A.bJ(B.k,s,p,s,q,s,B.du),s,48,s,s,s,s,48)
-return A.fG(!1,r,!0,A.cq(A.b([q,B.e8,A.b4(a==="Overall Progress"?a:a+" Branch",s,B.ap,s,B.UF,B.cq,s)],t.p),B.x,B.u,B.aB),s,!0,s,s,s,s,s,s,s,new A.ajq(this,a),s,s,s,s,s,s)},
+return A.fG(!1,r,!0,A.cq(A.b([q,B.e8,A.b4(a,s,B.ap,s,B.UF,B.cq,s)],t.p),B.x,B.u,B.aB),s,!0,s,s,s,s,s,s,s,new A.ajq(this,a),s,s,s,s,s,s)},
 ym(a){return this.aj4(a)},
 aj4(d1){var s=0,r=A.O(t.H),q=1,p=[],o=[],n=this,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1,a2,a3,a4,a5,a6,a7,a8,a9,b0,b1,b2,b3,b4,b5,b6,b7,b8,b9,c0,c1,c2,c3,c4,c5,c6,c7,c8,c9,d0
 var $async$ym=A.P(function(d3,d4){if(d3===1){p.push(d4)
@@ -88353,7 +88353,7 @@ r=B.b.dF(a9,0,new A.ajv())
 q=s-r
 p=s>0?r/s*100:0
 if(a8==="Overall Progress"){if(p===0){o=""+s
-return["\ud83d\udca1 Salma Insight: Physical inventory counting has not started yet across active warehouses. 0 bins have been counted so far out of "+o+" total bins.","\ud83d\udca1 Salma Insight: Physical inventory execution is currently pending; physical inventory has not initiated yet. Total pending count stands at "+o+" bins.","\ud83d\udca1 Salma Insight: No counting activity recorded yet. Physical inventory counting has not started across the system."][B.fU.AU(3)]}n=A.p(t.N,t.i)
+return["\ud83d\udca1 Salma's Insight: Physical inventory counting has not started yet across active warehouses. 0 bins have been counted so far out of "+o+" total bins.","\ud83d\udca1 Salma's Insight: Physical inventory execution is currently pending; physical inventory has not initiated yet. Total pending count stands at "+o+" bins.","\ud83d\udca1 Salma's Insight: No counting activity recorded yet. Physical inventory counting has not started across the system."][B.fU.AU(3)]}n=A.p(t.N,t.i)
 for(o=a9.length,m=0;m<a9.length;a9.length===o||(0,A.w)(a9),++m){l=a9[m]
 k=l.h(0,"time")
 j=k==null?null:J.aG(k)
@@ -88368,13 +88368,13 @@ else f="N/A"
 o=B.d.a5(p,1)
 k=""+q
 e=""+B.d.d5(h)
-return["\ud83d\udca1 Salma Insight: Current overall counting execution stands at "+o+"%. There are "+k+" bins remaining to complete. At an average velocity of "+e+" bins/hour, we estimate approximately "+f+" remaining to finish all active inventories.","\ud83d\udca1 Salma Insight: Inventory progress report is at "+B.d.a5(p,1)+a7+k+" bins left. Based on scanning speeds of ~"+e+" bins per hour, estimated time to completion is around "+f+".","\ud83d\udca1 Salma Insight: Execution tracking shows "+B.d.a5(p,1)+"% overall completion ("+k+" bins pending). Maintaining the current hourly average of "+e+" bins, full inventory closure is projected in roughly "+f+"."][B.fU.AU(3)]}else{o=A.X(a9).i("ar<1>")
+return["\ud83d\udca1 Salma's Insight: Current overall counting execution stands at "+o+"%. There are "+k+" bins remaining to complete. At an average velocity of "+e+" bins/hour, we estimate approximately "+f+" remaining to finish all active inventories.","\ud83d\udca1 Salma's Insight: Inventory progress report is at "+B.d.a5(p,1)+a7+k+" bins left. Based on scanning speeds of ~"+e+" bins per hour, estimated time to completion is around "+f+".","\ud83d\udca1 Salma's Insight: Execution tracking shows "+B.d.a5(p,1)+"% overall completion ("+k+" bins pending). Maintaining the current hourly average of "+e+" bins, full inventory closure is projected in roughly "+f+"."][B.fU.AU(3)]}else{o=A.X(a9).i("ar<1>")
 d=A.S(new A.ar(a9,new A.ajx(a8),o),o.i("t.E"))
 c=B.b.dF(d,0,new A.ajy())
 b=B.b.dF(d,0,new A.ajz())
 a=c-b
 a0=c>0?b/c*100:0
-if(a0===0)return["\ud83d\udca1 Salma Insight: Physical inventory has not started yet in "+a8+" branch. All "+c+" designated bins are pending initial audit verification.","\ud83d\udca1 Salma Insight: Counting activity for "+a8+" is currently at 0%. Physical inventory has not initiated yet in this warehouse.","\ud83d\udca1 Salma Insight: No bins scanned yet for "+a8+". Physical inventory has not started yet in this branch."][B.fU.AU(3)]
+if(a0===0)return["\ud83d\udca1 Salma's Insight: Physical inventory has not started yet in "+a8+" branch. All "+c+" designated bins are pending initial audit verification.","\ud83d\udca1 Salma's Insight: Counting activity for "+a8+" is currently at 0%. Physical inventory has not initiated yet in this warehouse.","\ud83d\udca1 Salma's Insight: No bins scanned yet for "+a8+". Physical inventory has not started yet in this branch."][B.fU.AU(3)]
 a1=A.p(t.N,t.i)
 for(o=d.length,m=0;m<d.length;d.length===o||(0,A.w)(d),++m){l=d[m]
 k=l.h(0,"time")
@@ -88387,11 +88387,11 @@ a1.m(0,j,(k==null?0:k)+i)}a2=a1.a!==0?new A.b1(a1,a1.$ti.i("b1<2>")).dF(0,0,new 
 a3=a2>0?a/a2:0
 if(a3>0)a4=a3<1?""+B.d.d5(a3*60)+" minutes":B.d.a5(a3,1)+" hours"
 else a4="N/A"
-o="\ud83d\udca1 Salma Insight: "+a8
+o="\ud83d\udca1 Salma's Insight: "+a8
 k=B.d.a5(a0,1)
 e=""+a
 a5=""+B.d.d5(a2)
-return[o+" report shows "+k+a7+e+" bins remaining. Operating at an average of "+a5+" bins per hour, estimated time to completion is "+a4+".",o+" branch execution is at "+B.d.a5(a0,1)+"% ("+e+" bins left to scan). Based on hourly velocity of ~"+a5+" bins/hour, projected completion is in "+a4+".","\ud83d\udca1 Salma Insight: Physical inventory progress for "+a8+" stands at "+B.d.a5(a0,1)+"% ("+e+" bins pending). At current counting speeds of "+a5+" bins per hour, we project completion in approximately "+a4+"."][B.fU.AU(3)]}},
+return[o+" report shows "+k+a7+e+" bins remaining. Operating at an average of "+a5+" bins per hour, estimated time to completion is "+a4+".",o+" branch execution is at "+B.d.a5(a0,1)+"% ("+e+" bins left to scan). Based on hourly velocity of ~"+a5+" bins/hour, projected completion is in "+a4+".","\ud83d\udca1 Salma's Insight: Physical inventory progress for "+a8+" stands at "+B.d.a5(a0,1)+"% ("+e+" bins pending). At current counting speeds of "+a5+" bins per hour, we project completion in approximately "+a4+"."][B.fU.AU(3)]}},
 L(a){var s=this,r=null,q=t.p,p=A.bZ(A.b([A.azG(B.aG,B.mx,18),B.df,A.cq(A.b([B.Ws,A.b4("AI Digital Assistant",r,r,r,A.cY(r,r,B.ca,r,r,r,r,r,r,r,r,12,r,r,B.p,r,r,!0,r,r,r,r,r,r,r,r),r,r)],q),B.a4,B.u,B.aB)],q),B.x,B.u,B.v),o=A.b([A.yu(r,r,B.GQ,r,r,s.ga6Q(),r,r,"Clear Chat")],q),n=s.d.length
 q=A.b([A.f_(A.bW(r,new A.L2(new A.aeP(new A.ak0(s),n,!0,!0,!0,r),B.eN,B.aV,!0,s.f,r,r,!1,r,r,n,B.aH,r,r,B.J,B.aQ,r),B.o,B.E8,r,r,r,r,r,r,r,r,r),1)],q)
 if(s.r)q.push(A.bW(r,A.b4(s.w,r,r,r,B.SE,r,r),B.o,B.k,r,r,r,r,r,B.FR,r,r,1/0))

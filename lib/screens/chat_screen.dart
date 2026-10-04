@@ -441,7 +441,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            actionName == "Overall Progress" ? actionName : "$actionName Branch",
+            actionName == "Overall Progress" ? actionName : "$actionName",
             style: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -661,9 +661,9 @@ class _ChatScreenState extends State<ChatScreen> {
     if (actionName == "Overall Progress") {
       if (overallP == 0.0) {
         final List<String> zeroPhrases = [
-          "💡 Salma Insight: Physical inventory counting has not started yet across active warehouses. 0 bins have been counted so far out of $totalB total bins.",
-          "💡 Salma Insight: Physical inventory execution is currently pending; physical inventory has not initiated yet. Total pending count stands at $totalB bins.",
-          "💡 Salma Insight: No counting activity recorded yet. Physical inventory counting has not started across the system."
+          "💡 Salma's Insight: Physical inventory counting has not started yet across active warehouses. 0 bins have been counted so far out of $totalB total bins.",
+          "💡 Salma's Insight: Physical inventory execution is currently pending; physical inventory has not initiated yet. Total pending count stands at $totalB bins.",
+          "💡 Salma's Insight: No counting activity recorded yet. Physical inventory counting has not started across the system."
         ];
         return zeroPhrases[random.nextInt(zeroPhrases.length)];
       }
@@ -687,9 +687,9 @@ class _ChatScreenState extends State<ChatScreen> {
           : "N/A";
 
       final List<String> overallPhrases = [
-        "💡 Salma Insight: Current overall counting execution stands at ${overallP.toStringAsFixed(1)}%. There are $remainingBins bins remaining to complete. At an average velocity of ${avgBinsPerHour.toInt()} bins/hour, we estimate approximately $timeEstimate remaining to finish all active inventories.",
-        "💡 Salma Insight: Inventory progress report is at ${overallP.toStringAsFixed(1)}% completion with $remainingBins bins left. Based on scanning speeds of ~${avgBinsPerHour.toInt()} bins per hour, estimated time to completion is around $timeEstimate.",
-        "💡 Salma Insight: Execution tracking shows ${overallP.toStringAsFixed(1)}% overall completion ($remainingBins bins pending). Maintaining the current hourly average of ${avgBinsPerHour.toInt()} bins, full inventory closure is projected in roughly $timeEstimate."
+        "💡 Salma's Insight: Current overall counting execution stands at ${overallP.toStringAsFixed(1)}%. There are $remainingBins bins remaining to complete. At an average velocity of ${avgBinsPerHour.toInt()} bins/hour, we estimate approximately $timeEstimate remaining to finish all active inventories.",
+        "💡 Salma's Insight: Inventory progress report is at ${overallP.toStringAsFixed(1)}% completion with $remainingBins bins left. Based on scanning speeds of ~${avgBinsPerHour.toInt()} bins per hour, estimated time to completion is around $timeEstimate.",
+        "💡 Salma's Insight: Execution tracking shows ${overallP.toStringAsFixed(1)}% overall completion ($remainingBins bins pending). Maintaining the current hourly average of ${avgBinsPerHour.toInt()} bins, full inventory closure is projected in roughly $timeEstimate."
       ];
       return overallPhrases[random.nextInt(overallPhrases.length)];
     } else {
@@ -701,9 +701,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
       if (bP == 0.0) {
         final List<String> branchZeroPhrases = [
-          "💡 Salma Insight: Physical inventory has not started yet in $actionName branch. All $bB designated bins are pending initial audit verification.",
-          "💡 Salma Insight: Counting activity for $actionName is currently at 0%. Physical inventory has not initiated yet in this warehouse.",
-          "💡 Salma Insight: No bins scanned yet for $actionName. Physical inventory has not started yet in this branch."
+          "💡 Salma's Insight: Physical inventory has not started yet in $actionName branch. All $bB designated bins are pending initial audit verification.",
+          "💡 Salma's Insight: Counting activity for $actionName is currently at 0%. Physical inventory has not initiated yet in this warehouse.",
+          "💡 Salma's Insight: No bins scanned yet for $actionName. Physical inventory has not started yet in this branch."
         ];
         return branchZeroPhrases[random.nextInt(branchZeroPhrases.length)];
       }
@@ -721,9 +721,9 @@ class _ChatScreenState extends State<ChatScreen> {
           : "N/A";
 
       final List<String> specificBranchPhrases = [
-        "💡 Salma Insight: $actionName report shows ${bP.toStringAsFixed(1)}% completion with $bRem bins remaining. Operating at an average of ${bAvg.toInt()} bins per hour, estimated time to completion is $bTimeEst.",
-        "💡 Salma Insight: $actionName branch execution is at ${bP.toStringAsFixed(1)}% ($bRem bins left to scan). Based on hourly velocity of ~${bAvg.toInt()} bins/hour, projected completion is in $bTimeEst.",
-        "💡 Salma Insight: Physical inventory progress for $actionName stands at ${bP.toStringAsFixed(1)}% ($bRem bins pending). At current counting speeds of ${bAvg.toInt()} bins per hour, we project completion in approximately $bTimeEst."
+        "💡 Salma's Insight: $actionName report shows ${bP.toStringAsFixed(1)}% completion with $bRem bins remaining. Operating at an average of ${bAvg.toInt()} bins per hour, estimated time to completion is $bTimeEst.",
+        "💡 Salma's Insight: $actionName branch execution is at ${bP.toStringAsFixed(1)}% ($bRem bins left to scan). Based on hourly velocity of ~${bAvg.toInt()} bins/hour, projected completion is in $bTimeEst.",
+        "💡 Salma's Insight: Physical inventory progress for $actionName stands at ${bP.toStringAsFixed(1)}% ($bRem bins pending). At current counting speeds of ${bAvg.toInt()} bins per hour, we project completion in approximately $bTimeEst."
       ];
       return specificBranchPhrases[random.nextInt(specificBranchPhrases.length)];
     }
