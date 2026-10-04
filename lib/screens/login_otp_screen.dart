@@ -15,6 +15,7 @@ class LoginOtpScreen extends StatefulWidget {
 class _LoginOtpScreenState extends State<LoginOtpScreen> {
   int _step = 0; // 0: Employee ID, 1: OTP
   final TextEditingController _employeeIdController = TextEditingController();
+  bool _isTestMode = false;
 
   // 4 OTP digit controllers & focus nodes
   final List<TextEditingController> _otpControllers =
@@ -76,13 +77,23 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
 
   Future<void> _submitEmployeeId() async {
     final employeeId = _employeeIdController.text.trim();
-    if (employeeId.isEmpty) {
+    if (employeeId.length != 5) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text("Please enter your Employee ID"),
+          content: const Text("Please enter a valid 5-digit Employee ID"),
           backgroundColor: const Color(0xFF303489),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+
+    if (_isTestMode) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(employeeId: employeeId),
         ),
       );
       return;
@@ -169,18 +180,6 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
     }
 
     final employeeId = _employeeIdController.text.trim();
-
-    // Temporary testing bypass for 1964
-    if (otp == '1964') {
-      _timer?.cancel();
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => ChatScreen(employeeId: employeeId)),
-        );
-      }
-      return;
-    }
 
     setState(() {
       _isVerifying = true;
@@ -403,7 +402,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 20),
                             // Next Button
                             _buildLiquidButton(
                               label: "Next",
@@ -533,7 +532,32 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
+                    // Test Mode Switch under the login card
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          "Test Mode (Skip OTP & Email)",
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Switch(
+                          value: _isTestMode,
+                          activeThumbColor: const Color(0xFF3CCEFF),
+                          onChanged: (val) {
+                            setState(() {
+                              _isTestMode = val;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
                     // Company Logo Under Login Card & Centered
                     Center(
                       child: Image.asset(

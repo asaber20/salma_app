@@ -8,10 +8,11 @@ enum ChatMessageType {
   segmentProgress,
   lineChart,
   physicalDashboard,
+  branchReportCard,
 }
 
 class ChatMessage {
-  final String text;
+  String text;
   final bool isUser;
   final DateTime timestamp;
   MessageStatus status;

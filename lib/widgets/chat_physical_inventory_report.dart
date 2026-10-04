@@ -14,7 +14,6 @@ const List<String> kPreferredBranchOrder = [
   'Riyadh',
   'Dammam',
   'Jeddah',
-  'Khamis Mushit',
   'Khamis Mushait',
 ];
 
@@ -23,7 +22,6 @@ const List<String> kPreferredSegmentOrder = [
   'Pharma',
   'Animal Health',
   'Animal health',
-  'Health Tech',
   'Health tech',
 ];
 
@@ -49,7 +47,8 @@ class ChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isDashboard = message.type == ChatMessageType.physicalDashboard;
+    final bool isDashboard = message.type == ChatMessageType.physicalDashboard ||
+        message.type == ChatMessageType.branchReportCard;
 
     return Align(
       alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -99,6 +98,11 @@ class ChatBubble extends StatelessWidget {
                 PhysicalInventoryDashboardWidget(
                   chartData: message.chartData ?? {},
                   title: message.text,
+                )
+              else if (message.type == ChatMessageType.branchReportCard)
+                BranchReportCardWidget(
+                  chartData: message.chartData ?? {},
+                  branchName: message.chartData?['branchName'] ?? 'Branch',
                 )
               else if (message.type == ChatMessageType.barChart)
                 _buildBarChart(context)
@@ -790,20 +794,60 @@ class _PhysicalInventoryDashboardWidgetState
   String _selectedBranch = 'All';
   String _selectedSegment = 'All';
   String _selectedSt = 'All';
-  String? _selectedDate;
-
-  @override
-  void initState() {
-    super.initState();
-    final List dates = widget.chartData['dates'] as List? ?? [];
-    if (dates.isNotEmpty) {
-      _selectedDate = dates.first.toString();
-    }
-  }
 
   List<Map<String, dynamic>> _getRawItems() {
     final List raw = widget.chartData['rawItems'] as List? ?? [];
     return raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  Widget _buildExecutiveKpiBanner(List<Map<String, dynamic>> rawItems, List<String> branches) {
+    int totalBins = rawItems.fold<int>(0, (sum, e) => sum + (e['bins'] as int));
+    int totalCounted = rawItems.fold<int>(0, (sum, e) => sum + (e['countBins'] as int));
+    double overallPct = totalBins > 0 ? (totalCounted / totalBins) * 100 : 0.0;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF303489), Color(0xFF8045DD)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF303489).withValues(alpha: 0.25),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildKpiItem("Total Bins", "$totalBins", Icons.inventory_2_rounded),
+          _buildKpiItem("Counted", "$totalCounted", Icons.check_circle_rounded),
+          _buildKpiItem("Progress", "${overallPct.toStringAsFixed(1)}%", Icons.trending_up_rounded),
+          _buildKpiItem("Branches", "${branches.length}", Icons.business_rounded),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKpiItem(String label, String value, IconData icon) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: Colors.white70, size: 18),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 10, color: Colors.white70, fontWeight: FontWeight.w500),
+        ),
+      ],
+    );
   }
 
   @override
@@ -824,9 +868,7 @@ class _PhysicalInventoryDashboardWidgetState
     final List<String> availableBranches = ['All', ...rawBranches];
     final List<String> availableSegments = ['All', ...rawSegments];
     final List<String> availableStList =
-        ['All', ...(rawStList.isNotEmpty ? rawStList : ['Ambient', 'Cold'])];
-    final List<String> availableDates =
-        (widget.chartData['dates'] as List? ?? []).map((e) => e.toString()).toList();
+        ['All', ...(rawStList.isNotEmpty ? rawStList : ['Dry', 'Cold'])];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -849,183 +891,50 @@ class _PhysicalInventoryDashboardWidgetState
         ),
         const SizedBox(height: 12),
 
-        // 1. Branch Filter
-        if (availableBranches.length > 2) ...[
-          Row(
-            children: const [
-              Icon(Icons.location_city_rounded, size: 13, color: Color(0xFF303489)),
-              SizedBox(width: 4),
-              Text(
-                "Branch Filter:",
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF303489)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: availableBranches.map((branchName) {
-                final isSelected = branchName == _selectedBranch;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6.0),
-                  child: FilterChip(
-                    label: Text(
-                      branchName == 'All' ? 'All Branches' : branchName,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.normal,
-                        color: isSelected ? Colors.white : const Color(0xFF33333D),
-                      ),
-                    ),
-                    selected: isSelected,
-                    selectedColor: const Color(0xFF303489),
-                    backgroundColor: Colors.grey.shade100,
-                    showCheckmark: false,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
-                    onSelected: (selected) {
-                      if (selected) {
-                        setState(() {
-                          _selectedBranch = branchName;
-                        });
-                      }
-                    },
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
+        // Executive Summary KPI Banner
+        _buildExecutiveKpiBanner(rawItems, rawBranches),
+        const SizedBox(height: 16),
 
-        // 2. Segment Filter
-        if (availableSegments.length > 2) ...[
-          Row(
-            children: const [
-              Icon(Icons.category_rounded, size: 13, color: Color(0xFF8045DD)),
-              SizedBox(width: 4),
-              Text(
-                "Segment Filter:",
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF8045DD)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: availableSegments.map((segmentName) {
-                final isSelected = segmentName == _selectedSegment;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6.0),
-                  child: FilterChip(
-                    label: Text(
-                      segmentName == 'All' ? 'All Segments' : segmentName,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.normal,
-                        color: isSelected ? Colors.white : const Color(0xFF33333D),
-                      ),
-                    ),
-                    selected: isSelected,
-                    selectedColor: const Color(0xFF8045DD),
-                    backgroundColor: Colors.grey.shade100,
-                    showCheckmark: false,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
-                    onSelected: (selected) {
-                      if (selected) {
-                        setState(() {
-                          _selectedSegment = segmentName;
-                        });
-                      }
-                    },
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
-
-        // 3. Storage Condition (ST) Filter
-        if (availableStList.length > 1) ...[
-          Row(
-            children: const [
-              Icon(Icons.thermostat_rounded, size: 13, color: Color(0xFF2659E4)),
-              SizedBox(width: 4),
-              Text(
-                "Storage Filter:",
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2659E4)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: availableStList.map((stName) {
-                final isSelected = stName == _selectedSt;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6.0),
-                  child: FilterChip(
-                    label: Text(
-                      stName == 'All' ? 'All Storage' : stName,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.normal,
-                        color: isSelected ? Colors.white : const Color(0xFF33333D),
-                      ),
-                    ),
-                    selected: isSelected,
-                    selectedColor: const Color(0xFF2659E4),
-                    backgroundColor: Colors.grey.shade100,
-                    showCheckmark: false,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
-                    onSelected: (selected) {
-                      if (selected) {
-                        setState(() {
-                          _selectedSt = stName;
-                        });
-                      }
-                    },
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          const SizedBox(height: 12),
-        ],
-
-        // Active Filter Summary Badge
+        // Active Filter Summary & Reset Button
         if (_selectedBranch != 'All' ||
             _selectedSegment != 'All' ||
             _selectedSt != 'All')
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
               color: const Color(0xFF303489).withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFF303489).withValues(alpha: 0.2)),
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Icon(Icons.filter_alt_rounded, size: 14, color: Color(0xFF303489)),
-                const SizedBox(width: 4),
-                Text(
-                  "Filters: "
-                  "${_selectedBranch != 'All' ? 'Branch: $_selectedBranch' : ''}"
-                  "${(_selectedBranch != 'All' && (_selectedSegment != 'All' || _selectedSt != 'All')) ? ' | ' : ''}"
-                  "${_selectedSegment != 'All' ? 'Segment: $_selectedSegment' : ''}"
-                  "${(_selectedSegment != 'All' && _selectedSt != 'All') ? ' | ' : ''}"
-                  "${_selectedSt != 'All' ? 'Storage: $_selectedSt' : ''}",
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF303489)),
+                Row(
+                  children: [
+                    const Icon(Icons.filter_alt_rounded, size: 16, color: Color(0xFF303489)),
+                    const SizedBox(width: 6),
+                    Text(
+                      "Filtered by: "
+                      "${_selectedBranch != 'All' ? 'Branch: $_selectedBranch ' : ''}"
+                      "${_selectedSegment != 'All' ? 'Segment: $_selectedSegment ' : ''}"
+                      "${_selectedSt != 'All' ? 'Storage: $_selectedSt' : ''}",
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF303489)),
+                    ),
+                  ],
+                ),
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _selectedBranch = 'All';
+                      _selectedSegment = 'All';
+                      _selectedSt = 'All';
+                    });
+                  },
+                  child: const Text(
+                    "Reset All",
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.redAccent),
+                  ),
                 ),
               ],
             ),
@@ -1048,32 +957,12 @@ class _PhysicalInventoryDashboardWidgetState
 
         const SizedBox(height: 20),
 
-        // 2. Progress by Segment
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF9FBFB),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade200),
-          ),
-          child: _buildSegmentSection(
-              context, rawItems, availableSegments.sublist(1)),
-        ),
-
-        const SizedBox(height: 20),
-
-        // 3. Line Chart by Date / Hour
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF9FBFB),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade200),
-          ),
-          child: _buildLineChartSection(
-              context, rawItems, availableDates),
+        // 2. Progress by Segment & Storage Condition Side-by-Side
+        _buildSegmentAndStorageSection(
+          context,
+          rawItems,
+          availableSegments.sublist(1),
+          availableStList.sublist(1),
         ),
       ],
     );
@@ -1128,8 +1017,13 @@ class _PhysicalInventoryDashboardWidgetState
                   padding: const EdgeInsets.only(right: 18.0),
                   child: InkWell(
                     onTap: () {
-                      _showBranchDetailDialog(
-                          context, branchName, totalCounted, totalBins, pctInt, branchColor);
+                      setState(() {
+                        if (_selectedBranch == branchName) {
+                          _selectedBranch = 'All';
+                        } else {
+                          _selectedBranch = branchName;
+                        }
+                      });
                     },
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
@@ -1186,413 +1080,273 @@ class _PhysicalInventoryDashboardWidgetState
     );
   }
 
-  void _showBranchDetailDialog(BuildContext context, String branchName,
-      int countBins, int bins, int pctInt, Color accentColor) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              Icon(Icons.location_city_rounded, color: accentColor),
-              const SizedBox(width: 8),
-              Text(branchName,
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF33333D))),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text("Counted Bins:",
-                            style: TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF33333D))),
-                        Text("$countBins",
-                            style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: accentColor)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text("Total Bins:",
-                            style: TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF33333D))),
-                        Text("$bins",
-                            style: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF33333D))),
-                      ],
-                    ),
-                    const Divider(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text("Progress:",
-                            style: TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF33333D))),
-                        Text("$pctInt%",
-                            style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: accentColor)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: _buildCloseButtonText(accentColor),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  Widget _buildSegmentAndStorageSection(
+      BuildContext context, List<Map<String, dynamic>> rawItems, List<String> segmentList, List<String> stList) {
+    if (segmentList.isEmpty && stList.isEmpty) return const SizedBox.shrink();
 
-  Widget _buildCloseButtonText(Color accentColor) {
-    return Text(
-      "Close",
-      style: TextStyle(color: accentColor, fontWeight: FontWeight.bold),
-    );
-  }
-
-  void _showSegmentDetailDialog(BuildContext context, String segmentName,
-      int countBins, int bins, int pctInt, Color accentColor) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              Icon(Icons.category_rounded, color: accentColor),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  segmentName,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, color: Color(0xFF33333D)),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text("Counted Bins:",
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF33333D))),
-                        Text("$countBins",
-                            style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: accentColor)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text("Total Bins:",
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF33333D))),
-                        Text("$bins",
-                            style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF33333D))),
-                      ],
-                    ),
-                    const Divider(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text("Progress:",
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF33333D))),
-                        Text("$pctInt%",
-                            style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: accentColor)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: _buildCloseButtonText(accentColor),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildSegmentSection(
-      BuildContext context, List<Map<String, dynamic>> rawItems, List<String> segmentList) {
-    if (segmentList.isEmpty) return const SizedBox.shrink();
-
-    final activeSegments = _selectedSegment == 'All'
-        ? segmentList
-        : segmentList.where((s) => s == _selectedSegment).toList();
-
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "Progress by Segment",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-            color: Color(0xFF303489),
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (activeSegments.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8.0),
-            child: Text("No segment data matching filters.",
-                style: TextStyle(fontSize: 12, color: Color(0xFF33333D))),
-          )
-        else
-          ...activeSegments.asMap().entries.map((sEntry) {
-            final int segIdx = sEntry.key;
-            final String segmentName = sEntry.value;
-            final Color segColor = kChartPalette[segIdx % kChartPalette.length];
-
-            final matchingItems = rawItems.where((item) {
-              final b = item['branch']?.toString() ?? '';
-              final s = item['segment']?.toString() ?? '';
-              final st = item['st']?.toString() ?? '';
-
-              final matchesS = s == segmentName;
-              final matchesB = _selectedBranch == 'All' || b == _selectedBranch;
-              final matchesSt = _selectedSt == 'All' || st == _selectedSt;
-
-              return matchesS && matchesB && matchesSt;
-            }).toList();
-
-            int totalBins = matchingItems.fold<int>(0, (sum, e) => sum + (e['bins'] as int));
-            int totalCounted = matchingItems.fold<int>(0, (sum, e) => sum + (e['countBins'] as int));
-            double percentage = totalBins > 0 ? (totalCounted / totalBins) : 0.0;
-            int pctInt = (percentage * 100).round();
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10.0),
-              child: InkWell(
-                onTap: () {
-                  _showSegmentDetailDialog(
-                      context, segmentName, totalCounted, totalBins, pctInt, segColor);
-                },
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 2.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              segmentName,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF33333D)),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            "$pctInt%",
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                color: segColor),
-                          ),
-                        ],
+        // Segment Section
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(14.0),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF9FBFB),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Progress by Segment",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF303489)),
+                    ),
+                    if (_selectedSegment != 'All')
+                      InkWell(
+                        onTap: () => setState(() => _selectedSegment = 'All'),
+                        child: const Text("Clear", style: TextStyle(fontSize: 10, color: Colors.red, fontWeight: FontWeight.bold)),
                       ),
-                      const SizedBox(height: 5),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: LinearProgressIndicator(
-                          value: percentage.clamp(0.0, 1.0),
-                          minHeight: 8,
-                          backgroundColor: Colors.grey.shade200,
-                          valueColor: AlwaysStoppedAnimation<Color>(segColor),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                ...segmentList.asMap().entries.map((sEntry) {
+                  final int segIdx = sEntry.key;
+                  final String segmentName = sEntry.value;
+                  final Color segColor = kChartPalette[segIdx % kChartPalette.length];
+
+                  final matchingItems = rawItems.where((item) {
+                    final b = item['branch']?.toString() ?? '';
+                    final s = item['segment']?.toString() ?? '';
+                    final st = item['st']?.toString() ?? '';
+
+                    final matchesS = s == segmentName;
+                    final matchesB = _selectedBranch == 'All' || b == _selectedBranch;
+                    final matchesSt = _selectedSt == 'All' || st == _selectedSt;
+
+                    return matchesS && matchesB && matchesSt;
+                  }).toList();
+
+                  int totalBins = matchingItems.fold<int>(0, (sum, e) => sum + (e['bins'] as int));
+                  int totalCounted = matchingItems.fold<int>(0, (sum, e) => sum + (e['countBins'] as int));
+                  double percentage = totalBins > 0 ? (totalCounted / totalBins) : 0.0;
+                  int pctInt = (percentage * 100).round();
+                  bool isSel = _selectedSegment == segmentName;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          if (_selectedSegment == segmentName) {
+                            _selectedSegment = 'All';
+                          } else {
+                            _selectedSegment = segmentName;
+                          }
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(vertical: 2, horizontal: isSel ? 4 : 0),
+                        decoration: BoxDecoration(
+                          color: isSel ? segColor.withValues(alpha: 0.1) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    segmentName,
+                                    style: TextStyle(
+                                        fontWeight: isSel ? FontWeight.bold : FontWeight.w600,
+                                        fontSize: 11,
+                                        color: const Color(0xFF33333D)),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  "$pctInt%",
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
+                                      color: segColor),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: percentage.clamp(0.0, 1.0),
+                                minHeight: 6,
+                                backgroundColor: Colors.grey.shade200,
+                                valueColor: AlwaysStoppedAnimation<Color>(segColor),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Storage Section
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(14.0),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF9FBFB),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Progress by Storage",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF303489)),
+                    ),
+                    if (_selectedSt != 'All')
+                      InkWell(
+                        onTap: () => setState(() => _selectedSt = 'All'),
+                        child: const Text("Clear", style: TextStyle(fontSize: 10, color: Colors.red, fontWeight: FontWeight.bold)),
+                      ),
+                  ],
                 ),
-              ),
-            );
-          }),
+                const SizedBox(height: 10),
+                ...stList.asMap().entries.map((stEntry) {
+                  final int stIdx = stEntry.key;
+                  final String stName = stEntry.value;
+                  final Color stColor = kChartPalette[(stIdx + 2) % kChartPalette.length];
+
+                  final matchingItems = rawItems.where((item) {
+                    final b = item['branch']?.toString() ?? '';
+                    final s = item['segment']?.toString() ?? '';
+                    final st = item['st']?.toString() ?? '';
+
+                    final matchesSt = st == stName;
+                    final matchesB = _selectedBranch == 'All' || b == _selectedBranch;
+                    final matchesS = _selectedSegment == 'All' || s == _selectedSegment;
+
+                    return matchesSt && matchesB && matchesS;
+                  }).toList();
+
+                  int totalBins = matchingItems.fold<int>(0, (sum, e) => sum + (e['bins'] as int));
+                  int totalCounted = matchingItems.fold<int>(0, (sum, e) => sum + (e['countBins'] as int));
+                  double percentage = totalBins > 0 ? (totalCounted / totalBins) : 0.0;
+                  int pctInt = (percentage * 100).round();
+                  bool isSel = _selectedSt == stName;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          if (_selectedSt == stName) {
+                            _selectedSt = 'All';
+                          } else {
+                            _selectedSt = stName;
+                          }
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(vertical: 2, horizontal: isSel ? 4 : 0),
+                        decoration: BoxDecoration(
+                          color: isSel ? stColor.withValues(alpha: 0.1) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    stName,
+                                    style: TextStyle(
+                                        fontWeight: isSel ? FontWeight.bold : FontWeight.w600,
+                                        fontSize: 11,
+                                        color: const Color(0xFF33333D)),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  "$pctInt%",
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
+                                      color: stColor),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: percentage.clamp(0.0, 1.0),
+                                minHeight: 6,
+                                backgroundColor: Colors.grey.shade200,
+                                valueColor: AlwaysStoppedAnimation<Color>(stColor),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
+}
 
-  Widget _buildLineChartSection(
-      BuildContext context, List<Map<String, dynamic>> rawItems, List<String> dates) {
-    if (dates.isEmpty && rawItems.isNotEmpty) {
-      dates.add(DateTime.now().toIso8601String().split('T').first);
-    }
-    if (dates.isEmpty) return const SizedBox.shrink();
+class BranchReportCardWidget extends StatefulWidget {
+  final Map<String, dynamic> chartData;
+  final String branchName;
 
-    final String activeDate =
-        (_selectedDate != null && dates.contains(_selectedDate))
-            ? _selectedDate!
-            : dates.first;
+  const BranchReportCardWidget({
+    super.key,
+    required this.chartData,
+    required this.branchName,
+  });
 
-    final matchingItems = rawItems.where((item) {
-      final b = item['branch']?.toString() ?? '';
-      final s = item['segment']?.toString() ?? '';
-      final st = item['st']?.toString() ?? '';
-      final d = item['date']?.toString() ?? '';
+  @override
+  State<BranchReportCardWidget> createState() => _BranchReportCardWidgetState();
+}
 
-      final matchesB = _selectedBranch == 'All' || b == _selectedBranch;
-      final matchesS = _selectedSegment == 'All' || s == _selectedSegment;
-      final matchesSt = _selectedSt == 'All' || st == _selectedSt;
-      final matchesD = dates.length <= 1 || d == activeDate;
+class _BranchReportCardWidgetState extends State<BranchReportCardWidget> {
+  String? _selectedDate;
+  bool _isExpanded = true;
+  String? _selectedSegmentFilter;
+  String? _selectedStFilter;
 
-      return matchesB && matchesS && matchesSt && matchesD;
-    }).toList();
-
-    Map<String, double> hourlyData = {};
-    for (var item in matchingItems) {
-      String time = item['time']?.toString() ?? '08:00';
-      int cBins = item['countBins'] as int? ?? 0;
-      hourlyData[time] = (hourlyData[time] ?? 0.0) + cBins.toDouble();
-    }
-
-    final sortedHourKeys = hourlyData.keys.toList()..sort();
-    Map<String, double> sortedHourlyData = {};
-    for (var h in sortedHourKeys) {
-      sortedHourlyData[h] = hourlyData[h]!;
-    }
-
-    if (sortedHourlyData.isEmpty) {
-      sortedHourlyData = {
-        '08:00': 0.0,
-        '10:00': 0.0,
-        '12:00': 0.0,
-        '14:00': 0.0,
-      };
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              "Progress Per Date / Hour",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: Color(0xFF303489),
-              ),
-            ),
-            if (dates.length <= 1)
-              Text(
-                "Date: ${_formatDateLabel(activeDate)}",
-                style: const TextStyle(fontSize: 11, color: Color(0xFF33333D)),
-              ),
-          ],
-        ),
-        if (dates.length > 1) ...[
-          const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: dates.map((dateKey) {
-                final isSelected = dateKey == activeDate;
-                final displayDate = _formatDateLabel(dateKey);
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6.0),
-                  child: ChoiceChip(
-                    label: Text(
-                      displayDate,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.normal,
-                        color: isSelected ? Colors.white : const Color(0xFF33333D),
-                      ),
-                    ),
-                    selected: isSelected,
-                    selectedColor: const Color(0xFF303489),
-                    backgroundColor: Colors.grey.shade100,
-                    showCheckmark: false,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
-                    onSelected: (selected) {
-                      if (selected) {
-                        setState(() {
-                          _selectedDate = dateKey;
-                        });
-                      }
-                    },
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 205,
-          width: double.infinity,
-          child: CustomPaint(
-            key: ValueKey("line_chart_${activeDate}_${_selectedBranch}_${_selectedSegment}_$_selectedSt"),
-            painter: HourlyLineChartPainter(sortedHourlyData),
-          ),
-        ),
-      ],
-    );
+  @override
+  void initState() {
+    super.initState();
+    _selectedDate = 'All';
   }
 
   String _formatDateLabel(String dateStr) {
@@ -1603,5 +1357,478 @@ class _PhysicalInventoryDashboardWidgetState
       }
     }
     return dateStr;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List rawItems = widget.chartData['rawItems'] as List? ?? [];
+    final items = rawItems.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+
+    // Filter items for this branch
+    final branchItemsAll = items.where((item) {
+      final b = item['branch']?.toString().trim().toLowerCase() ?? '';
+      final target = widget.branchName.trim().toLowerCase();
+      if (target.contains('khamis') && b.contains('khamis')) {
+        return true;
+      }
+      return b == target;
+    }).toList();
+
+    Set<String> branchDates = {};
+    for (var item in branchItemsAll) {
+      String d = item['date']?.toString() ?? DateTime.now().toIso8601String().split('T').first;
+      branchDates.add(d);
+    }
+    final sortedDates = branchDates.toList()..sort();
+    final List<String> availableDates = ['All', ...sortedDates];
+    _selectedDate ??= 'All';
+
+    int totalBins = branchItemsAll.fold<int>(0, (sum, e) => sum + (e['bins'] as int));
+    int totalCounted = branchItemsAll.fold<int>(0, (sum, e) => sum + (e['countBins'] as int));
+    double branchPct = totalBins > 0 ? (totalCounted / totalBins) : 0.0;
+    int branchPctInt = (branchPct * 100).round();
+
+    // Health Status Badge calculation
+    String healthStatus = "On Track";
+    Color healthColor = const Color(0xFF2E7D32);
+    IconData healthIcon = Icons.trending_up_rounded;
+
+    if (branchPct >= 1.0) {
+      healthStatus = "Completed (100%)";
+      healthColor = const Color(0xFF00BFA5);
+      healthIcon = Icons.check_circle_rounded;
+    } else if (branchPct >= 0.75) {
+      healthStatus = "On Track";
+      healthColor = const Color(0xFF2E7D32);
+      healthIcon = Icons.trending_up_rounded;
+    } else if (branchPct > 0.0) {
+      healthStatus = "In Progress";
+      healthColor = const Color(0xFFF57F17);
+      healthIcon = Icons.hourglass_top_rounded;
+    } else {
+      healthStatus = "Not Started (0%)";
+      healthColor = const Color(0xFFE65100);
+      healthIcon = Icons.pause_circle_rounded;
+    }
+
+    // Segment breakdown for this branch (all dates)
+    Map<String, Map<String, int>> segmentBreakdown = {};
+    for (var item in branchItemsAll) {
+      String seg = item['segment']?.toString() ?? 'General';
+      int b = item['bins'] as int;
+      int c = item['countBins'] as int;
+      segmentBreakdown.putIfAbsent(seg, () => {'bins': 0, 'countBins': 0});
+      segmentBreakdown[seg]!['bins'] = segmentBreakdown[seg]!['bins']! + b;
+      segmentBreakdown[seg]!['countBins'] = segmentBreakdown[seg]!['countBins']! + c;
+    }
+
+    // Storage condition breakdown for this branch (all dates)
+    Map<String, Map<String, int>> stBreakdown = {};
+    for (var item in branchItemsAll) {
+      String st = item['st']?.toString() ?? 'Dry';
+      int b = item['bins'] as int;
+      int c = item['countBins'] as int;
+      stBreakdown.putIfAbsent(st, () => {'bins': 0, 'countBins': 0});
+      stBreakdown[st]!['bins'] = stBreakdown[st]!['bins']! + b;
+      stBreakdown[st]!['countBins'] = stBreakdown[st]!['countBins']! + c;
+    }
+
+    // Filter items by selected date specifically for hourly breakdown
+    final branchItemsDateFiltered = branchItemsAll.where((item) {
+      if (_selectedDate == 'All' || _selectedDate == null) return true;
+      String d = item['date']?.toString() ?? '';
+      return d == _selectedDate;
+    }).toList();
+
+    // Apply interactive segment / storage filters if active
+    var hourlyItems = branchItemsDateFiltered;
+    if (_selectedSegmentFilter != null) {
+      hourlyItems = hourlyItems.where((i) => i['segment']?.toString() == _selectedSegmentFilter).toList();
+    }
+    if (_selectedStFilter != null) {
+      hourlyItems = hourlyItems.where((i) => i['st']?.toString() == _selectedStFilter).toList();
+    }
+
+    // Hourly breakdown
+    Map<String, double> branchHourly = {};
+    for (var item in hourlyItems) {
+      String time = item['time']?.toString() ?? '08:00';
+      int cBins = item['countBins'] as int? ?? 0;
+      branchHourly[time] = (branchHourly[time] ?? 0.0) + cBins.toDouble();
+    }
+    final sortedHours = branchHourly.keys.toList()..sort();
+
+    String peakHour = 'N/A';
+    double maxBins = -1;
+    branchHourly.forEach((h, val) {
+      if (val > maxBins) {
+        maxBins = val;
+        peakHour = h;
+      }
+    });
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FBFB),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 1. Header with Branch Name, Health Badge & Expand/Collapse Accordion
+          Row(
+            children: [
+              const Icon(Icons.location_city_rounded, color: Color(0xFF303489), size: 16),
+              const SizedBox(width: 6),
+              Text(
+                widget.branchName,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: Color(0xFF303489),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: healthColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: healthColor.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(healthIcon, size: 12, color: healthColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      healthStatus,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: healthColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _isExpanded = !_isExpanded;
+                  });
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(4.0),
+                  child: Icon(
+                    _isExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                    color: const Color(0xFF303489),
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // 2. Main 3-in-Row Layout (Progress Circle | Interactive Segments | Interactive Storage)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Progress Circle
+              SizedBox(
+                width: 60,
+                height: 60,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: branchPct.clamp(0.0, 1.0),
+                      strokeWidth: 6,
+                      backgroundColor: Colors.grey.shade200,
+                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF8045DD)),
+                    ),
+                    Text(
+                      "$branchPctInt%",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: Color(0xFF303489),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(width: 1, height: 60, color: Colors.grey.shade300),
+              const SizedBox(width: 12),
+
+              // Segment Progress Bars (Interactive Filter)
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Segments",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF303489)),
+                        ),
+                        if (_selectedSegmentFilter != null)
+                          InkWell(
+                            onTap: () => setState(() => _selectedSegmentFilter = null),
+                            child: const Text("Clear", style: TextStyle(fontSize: 9, color: Colors.red, fontWeight: FontWeight.bold)),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    if (segmentBreakdown.isEmpty)
+                      const Text("No data", style: TextStyle(fontSize: 10, color: Colors.grey))
+                    else
+                      ...segmentBreakdown.entries.map((e) {
+                        String seg = e.key;
+                        int b = e.value['bins']!;
+                        int c = e.value['countBins']!;
+                        double p = b > 0 ? (c / b) : 0.0;
+                        int pInt = (p * 100).round();
+                        bool isSel = _selectedSegmentFilter == seg;
+                        return InkWell(
+                          onTap: () {
+                            setState(() {
+                              _selectedSegmentFilter = isSel ? null : seg;
+                            });
+                          },
+                          child: Container(
+                            padding: EdgeInsets.symmetric(vertical: 2, horizontal: isSel ? 4 : 0),
+                            decoration: BoxDecoration(
+                              color: isSel ? const Color(0xFF2659E4).withValues(alpha: 0.1) : Colors.transparent,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(child: Text(seg, style: TextStyle(fontSize: 10, fontWeight: isSel ? FontWeight.bold : FontWeight.w500, color: Color(0xFF33333D)), overflow: TextOverflow.ellipsis)),
+                                    Text("$pInt%", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF2659E4))),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                LinearProgressIndicator(
+                                  value: p.clamp(0.0, 1.0),
+                                  minHeight: 4,
+                                  backgroundColor: Colors.grey.shade200,
+                                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2659E4)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(width: 1, height: 60, color: Colors.grey.shade300),
+              const SizedBox(width: 12),
+
+              // Storage Condition Progress Bars (Interactive Filter)
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Storage",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF303489)),
+                        ),
+                        if (_selectedStFilter != null)
+                          InkWell(
+                            onTap: () => setState(() => _selectedStFilter = null),
+                            child: const Text("Clear", style: TextStyle(fontSize: 9, color: Colors.red, fontWeight: FontWeight.bold)),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    if (stBreakdown.isEmpty)
+                      const Text("No data", style: TextStyle(fontSize: 10, color: Colors.grey))
+                    else
+                      ...stBreakdown.entries.map((e) {
+                        String st = e.key;
+                        int b = e.value['bins']!;
+                        int c = e.value['countBins']!;
+                        double p = b > 0 ? (c / b) : 0.0;
+                        int pInt = (p * 100).round();
+                        bool isSel = _selectedStFilter == st;
+                        return InkWell(
+                          onTap: () {
+                            setState(() {
+                              _selectedStFilter = isSel ? null : st;
+                            });
+                          },
+                          child: Container(
+                            padding: EdgeInsets.symmetric(vertical: 2, horizontal: isSel ? 4 : 0),
+                            decoration: BoxDecoration(
+                              color: isSel ? const Color(0xFF8045DD).withValues(alpha: 0.1) : Colors.transparent,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(child: Text(st, style: TextStyle(fontSize: 10, fontWeight: isSel ? FontWeight.bold : FontWeight.w500, color: Color(0xFF33333D)), overflow: TextOverflow.ellipsis)),
+                                    Text("$pInt%", style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF8045DD))),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                LinearProgressIndicator(
+                                  value: p.clamp(0.0, 1.0),
+                                  minHeight: 4,
+                                  backgroundColor: Colors.grey.shade200,
+                                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF8045DD)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // 3. Expandable Accordion (Peak Hour Highlight & Date Filters)
+          if (_isExpanded) ...[
+            if (sortedHours.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Counted Bins Per Hour",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF303489)),
+                  ),
+                  if (maxBins > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF8045DD).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        "⚡ Peak: $peakHour (${maxBins.toInt()} bins)",
+                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF8045DD)),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: sortedHours.map((h) {
+                    double val = branchHourly[h]!;
+                    double hourPct = totalBins > 0 ? (val / totalBins) * 100 : 0.0;
+                    bool isPeak = h == peakHour;
+                    return Container(
+                      margin: const EdgeInsets.only(right: 8.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: isPeak ? const Color(0xFF8045DD).withValues(alpha: 0.12) : const Color(0xFF303489).withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isPeak ? const Color(0xFF8045DD) : const Color(0xFF303489).withValues(alpha: 0.15),
+                          width: isPeak ? 1.5 : 1.0,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            h,
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isPeak ? const Color(0xFF8045DD) : const Color(0xFF303489)),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            "${val.toInt()} bins",
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF8045DD)),
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            "${hourPct.toStringAsFixed(1)}%",
+                            style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF2659E4)),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+            if (sortedDates.length > 1) ...[
+              const SizedBox(height: 10),
+              const Divider(height: 1),
+              const SizedBox(height: 8),
+              const Text(
+                "Filter by Date:",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF303489)),
+              ),
+              const SizedBox(height: 4),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: availableDates.map((dateKey) {
+                    final isSelected = dateKey == _selectedDate;
+                    final displayDate = dateKey == 'All' ? 'All' : _formatDateLabel(dateKey);
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 6.0),
+                      child: ChoiceChip(
+                        label: Text(
+                          displayDate,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected ? Colors.white : const Color(0xFF33333D),
+                          ),
+                        ),
+                        selected: isSelected,
+                        selectedColor: const Color(0xFF303489),
+                        backgroundColor: Colors.grey.shade100,
+                        showCheckmark: false,
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() {
+                              _selectedDate = dateKey;
+                            });
+                          }
+                        },
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
   }
 }
