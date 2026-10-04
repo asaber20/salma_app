@@ -441,7 +441,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            actionName == "Overall Progress" ? actionName : "$actionName",
+            actionName == "Overall Progress" ? actionName : actionName,
             style: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,

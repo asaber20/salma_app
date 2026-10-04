@@ -119,7 +119,6 @@ class ChatBubble extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  const Spacer(),
                   Text(
                     _formatTime(message.timestamp),
                     style: TextStyle(fontSize: 11, color: Colors.grey[600]),
