@@ -3,7 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'chat_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'chat_physical_inventory_screen.dart';
 
 class LoginOtpScreen extends StatefulWidget {
   const LoginOtpScreen({super.key});
@@ -26,6 +27,27 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
   Timer? _timer;
   int _remainingSeconds = 120; // 2 minutes
   bool _isTimerExpired = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLastEmployeeId();
+  }
+
+  Future<void> _loadLastEmployeeId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastId = prefs.getString('last_employee_id');
+    if (lastId != null && lastId.isNotEmpty && mounted) {
+      setState(() {
+        _employeeIdController.text = lastId;
+      });
+    }
+  }
+
+  Future<void> _saveLastEmployeeId(String employeeId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('last_employee_id', employeeId);
+  }
 
   @override
   void dispose() {
@@ -90,12 +112,15 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
     }
 
     if (_isTestMode) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ChatScreen(employeeId: employeeId),
-        ),
-      );
+      await _saveLastEmployeeId(employeeId);
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChatPhysicalInventoryScreen(employeeId: employeeId),
+          ),
+        );
+      }
       return;
     }
 
@@ -216,10 +241,11 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
 
         if (isMatched) {
           _timer?.cancel();
+          await _saveLastEmployeeId(employeeId);
           if (mounted) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => ChatScreen(employeeId: employeeId)),
+              MaterialPageRoute(builder: (_) => ChatPhysicalInventoryScreen(employeeId: employeeId)),
             );
           }
         } else {
@@ -374,6 +400,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
                               keyboardType: TextInputType.number,
                               maxLength: 5,
                               inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
                                 LengthLimitingTextInputFormatter(5),
                               ],
                               style: const TextStyle(

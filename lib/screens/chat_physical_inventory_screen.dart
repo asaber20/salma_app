@@ -11,15 +11,11 @@ const List<String> preferredBranchOrder = [
   'Dammam',
   'Jeddah',
   'Khamis Mushit',
-  'Khamis Mushait',
 ];
 
 const List<String> preferredSegmentOrder = [
   'Human Pharma',
-  'Pharma',
   'Animal Health',
-  'Animal health',
-  'Health Tech',
   'Health tech',
 ];
 
@@ -38,16 +34,16 @@ int sortWithPreferredOrder(String a, String b, List<String> preferredOrder) {
   }
 }
 
-class ChatScreen extends StatefulWidget {
+class ChatPhysicalInventoryScreen extends StatefulWidget {
   final String employeeId;
 
-  const ChatScreen({super.key, this.employeeId = ''});
+  const ChatPhysicalInventoryScreen({super.key, this.employeeId = ''});
 
   @override
-  State<ChatScreen> createState() => _ChatScreenState();
+  State<ChatPhysicalInventoryScreen> createState() => _ChatPhysicalInventoryScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatPhysicalInventoryScreenState extends State<ChatPhysicalInventoryScreen> {
   final List<ChatMessage> _messages = [];
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -650,13 +646,14 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   String _generateAiInsight(String actionName, List<Map<String, dynamic>> items, Set<String> branchSet) {
-    if (items.isEmpty) return "💡 Salma Insight: Inventory data is synchronized and ready for counting execution.";
+    if (items.isEmpty) return "💡 Salma's Insight: Inventory data is synchronized and ready for counting execution.";
 
     int totalB = items.fold<int>(0, (s, e) => s + (e['bins'] as int));
     int totalC = items.fold<int>(0, (s, e) => s + (e['countBins'] as int));
     int remainingBins = totalB - totalC;
     double overallP = totalB > 0 ? (totalC / totalB) * 100 : 0.0;
 
+    String timeEstimate = "N/A";
     final random = math.Random();
     if (actionName == "Overall Progress") {
       if (overallP == 0.0) {
@@ -682,7 +679,7 @@ class _ChatScreenState extends State<ChatScreen> {
       }
 
       double hoursRemaining = avgBinsPerHour > 0 ? remainingBins / avgBinsPerHour : 0.0;
-      String timeEstimate = hoursRemaining > 0 
+      timeEstimate = hoursRemaining > 0 
           ? (hoursRemaining < 1 ? "${(hoursRemaining * 60).toInt()} minutes" : "${hoursRemaining.toStringAsFixed(1)} hours")
           : "N/A";
 
@@ -718,7 +715,7 @@ class _ChatScreenState extends State<ChatScreen> {
       double bRemHours = bAvg > 0 ? bRem / bAvg : 0.0;
       String bTimeEst = bRemHours > 0 
           ? (bRemHours < 1 ? "${(bRemHours * 60).toInt()} minutes" : "${bRemHours.toStringAsFixed(1)} hours")
-          : "N/A";
+          : timeEstimate;
 
       final List<String> specificBranchPhrases = [
         "💡 Salma's Insight: $actionName report shows ${bP.toStringAsFixed(1)}% completion with $bRem bins remaining. Operating at an average of ${bAvg.toInt()} bins per hour, estimated time to completion is $bTimeEst.",
