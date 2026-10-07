@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'chat_physical_inventory_screen.dart';
+import 'package:local_auth/local_auth.dart';
+import 'conversations_screen.dart';
 
 class LoginOtpScreen extends StatefulWidget {
   const LoginOtpScreen({super.key});
@@ -28,6 +29,9 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
   int _remainingSeconds = 120; // 2 minutes
   bool _isTimerExpired = false;
 
+  final LocalAuthentication _auth = LocalAuthentication();
+  bool _hasStoredUser = false;
+
   @override
   void initState() {
     super.initState();
@@ -40,7 +44,35 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
     if (lastId != null && lastId.isNotEmpty && mounted) {
       setState(() {
         _employeeIdController.text = lastId;
+        _hasStoredUser = true;
       });
+      _authenticateWithBiometrics(lastId);
+    }
+  }
+
+  Future<void> _authenticateWithBiometrics(String employeeId) async {
+    try {
+      final bool canAuthenticateWithBiometrics = await _auth.canCheckBiometrics;
+      final bool canAuthenticate = canAuthenticateWithBiometrics || await _auth.isDeviceSupported();
+      if (!canAuthenticate) return;
+
+      final bool didAuthenticate = await _auth.authenticate(
+        localizedReason: 'Authenticate with Face ID, Fingerprint, or device PIN to login',
+        options: const AuthenticationOptions(
+          biometricOnly: false,
+          stickyAuth: true,
+        ),
+      );
+
+      if (didAuthenticate && mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ConversationsScreen(employeeId: employeeId),
+          ),
+        );
+      }
+    } catch (_) {
     }
   }
 
@@ -117,7 +149,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => ChatPhysicalInventoryScreen(employeeId: employeeId),
+            builder: (_) => ConversationsScreen(employeeId: employeeId),
           ),
         );
       }
@@ -245,7 +277,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
           if (mounted) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => ChatPhysicalInventoryScreen(employeeId: employeeId)),
+              MaterialPageRoute(builder: (_) => ConversationsScreen(employeeId: employeeId)),
             );
           }
         } else {
@@ -364,7 +396,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
                               ),
                               child: ClipOval(
                                 child: Image.asset(
-                                  'assets/images/Salma_image.jpeg',
+                                  'assets/images/Salma_Icon.jpeg',
                                   fit: BoxFit.cover,
                                 ),
                               ),
@@ -440,6 +472,27 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
                                 Color(0xFF8045DD),
                               ],
                             ),
+                            if (_hasStoredUser) ...[
+                              const SizedBox(height: 12),
+                              OutlinedButton.icon(
+                                onPressed: () {
+                                  final employeeId = _employeeIdController.text.trim();
+                                  if (employeeId.length == 5) {
+                                    _authenticateWithBiometrics(employeeId);
+                                  }
+                                },
+                                icon: const Icon(Icons.fingerprint_rounded, color: Color(0xFF8045DD)),
+                                label: const Text(
+                                  "Login with Biometric / PIN",
+                                  style: TextStyle(color: Color(0xFF303489), fontWeight: FontWeight.bold),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  side: const BorderSide(color: Color(0xFF8045DD), width: 1.5),
+                                ),
+                              ),
+                            ],
                           ] else ...[
                             // Step 1: 4-Digit OTP inputs
                             Row(

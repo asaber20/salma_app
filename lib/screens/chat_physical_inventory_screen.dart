@@ -36,8 +36,13 @@ int sortWithPreferredOrder(String a, String b, List<String> preferredOrder) {
 
 class ChatPhysicalInventoryScreen extends StatefulWidget {
   final String employeeId;
+  final bool triggerChatStart;
 
-  const ChatPhysicalInventoryScreen({super.key, this.employeeId = ''});
+  const ChatPhysicalInventoryScreen({
+    super.key,
+    this.employeeId = '',
+    this.triggerChatStart = false,
+  });
 
   @override
   State<ChatPhysicalInventoryScreen> createState() => _ChatPhysicalInventoryScreenState();
@@ -53,7 +58,13 @@ class _ChatPhysicalInventoryScreenState extends State<ChatPhysicalInventoryScree
   @override
   void initState() {
     super.initState();
-    _loadMessages();
+    if (widget.triggerChatStart) {
+      _clearMessages().then((_) {
+        _fetchChatStart();
+      });
+    } else {
+      _loadMessages();
+    }
   }
 
   void _scrollToBottom() {
@@ -98,6 +109,264 @@ class _ChatPhysicalInventoryScreenState extends State<ChatPhysicalInventoryScree
     setState(() {
       _messages.clear();
     });
+  }
+
+  Future<void> _fetchChatStart() async {
+    setState(() {
+      _isTyping = true;
+      _typingText = "Salma is typing...";
+    });
+
+    String bearerToken =
+        'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxNTk2MzIiLCJuYW1lIjoiQWhtZWQgU2FiZXIiLCJhZG1pbiI6dHJ1ZSwiaXNfc2FiZXIiOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.ULGyy3ePlq0QEGjMDRJzT7Jop7TQ4Rjw3Bp6TcFdTkM';
+
+    try {
+      final response = await http.get(
+        Uri.parse(
+          'https://n8n.srv1348343.hstgr.cloud/webhook/physical_inventory',
+        ).replace(queryParameters: {
+          'imessage': '[CHAT_START]',
+          'employee_id': widget.employeeId,
+        }),
+        headers: {'authorization': bearerToken},
+      );
+
+      if (response.statusCode == 200) {
+        try {
+          final data = jsonDecode(response.body);
+
+          List<String> replies = [];
+          bool renderedDashboard = false;
+
+          if (data is List) {
+            bool isPhysicalInventory = data.isNotEmpty &&
+                data.first is Map &&
+                ((data.first as Map).containsKey('BRANCH') ||
+                    (data.first as Map).containsKey('branch') ||
+                    (data.first as Map).containsKey('segment'));
+
+            if (isPhysicalInventory) {
+              List<Map<String, dynamic>> parsedItems = [];
+              Set<String> branchSet = {};
+              Set<String> segmentSet = {};
+              Set<String> stSet = {};
+              Set<String> dateSet = {};
+
+              int idx = 1;
+              for (var item in data) {
+                if (item is Map) {
+                  String branch = item['branch']?.toString().trim() ??
+                      item['BRANCH']?.toString().trim() ??
+                      'Unknown Branch';
+                  String segment = item['segment']?.toString().trim() ??
+                      item['SEGMENT']?.toString().trim() ??
+                      'General';
+                  int bins = int.tryParse(item['bins']?.toString() ??
+                          item['BINS']?.toString() ??
+                          '0') ??
+                      0;
+                  int countBins = int.tryParse(item['count_bins']?.toString() ??
+                          item['COUNT_BINS']?.toString() ??
+                          '0') ??
+                      0;
+
+                  String upDate = item['up_date']?.toString().trim() ??
+                      item['UP_DATE']?.toString().trim() ??
+                      '';
+                  String upTime = item['up_time']?.toString().trim() ??
+                      item['UP_TIME']?.toString().trim() ??
+                      '';
+
+                  String normDate = upDate.isEmpty
+                      ? DateTime.now().toIso8601String().split('T').first
+                      : upDate;
+
+                  String hourLabel = '08:00';
+                  if (upTime.contains(':')) {
+                    final tParts = upTime.split(':');
+                    if (tParts.isNotEmpty) {
+                      hourLabel = "${tParts[0].padLeft(2, '0')}:00";
+                    }
+                  } else {
+                    int hourInt = 8 + (idx % 9);
+                    hourLabel = "${hourInt.toString().padLeft(2, '0')}:00";
+                  }
+
+                  String rawSt = item['st']?.toString().trim() ??
+                      item['ST']?.toString().trim() ??
+                      'Dry';
+                  String st = rawSt.isEmpty ? 'Dry' : rawSt;
+
+                  branchSet.add(branch);
+                  segmentSet.add(segment);
+                  stSet.add(st);
+                  dateSet.add(normDate);
+
+                  parsedItems.add({
+                    'branch': branch,
+                    'segment': segment,
+                    'st': st,
+                    'bins': bins,
+                    'countBins': countBins,
+                    'date': normDate,
+                    'time': hourLabel,
+                  });
+                  idx++;
+                }
+              }
+
+              final sortedBranches = branchSet.toList()
+                ..sort((a, b) => sortWithPreferredOrder(a, b, preferredBranchOrder));
+
+              final sortedSegments = segmentSet.toList()
+                ..sort((a, b) => sortWithPreferredOrder(a, b, preferredSegmentOrder));
+
+              const List<String> preferredStOrder = ['Dry', 'Cold'];
+              final sortedStList = stSet.toList()
+                ..sort((a, b) => sortWithPreferredOrder(a, b, preferredStOrder));
+
+              final now = DateTime.now();
+
+              if (mounted) {
+                setState(() {
+                  final dashboardMessage = ChatMessage(
+                    text: "Physical Inventory Report",
+                    isUser: false,
+                    timestamp: now,
+                    type: ChatMessageType.physicalDashboard,
+                    chartData: {
+                      'rawItems': parsedItems,
+                      'branches': sortedBranches,
+                      'segments': sortedSegments,
+                      'stList': sortedStList,
+                      'dates': dateSet.toList()..sort(),
+                    },
+                  );
+                  _messages.insert(0, dashboardMessage);
+
+                  // Insert AI Insight
+                  final insightText = _generateAiInsight("Overall Progress", parsedItems, branchSet);
+                  final insightMessage = ChatMessage(
+                    text: insightText,
+                    isUser: false,
+                    timestamp: now.add(const Duration(milliseconds: 50)),
+                    type: ChatMessageType.text,
+                  );
+                  _messages.insert(0, insightMessage);
+                });
+                renderedDashboard = true;
+              }
+            } else {
+              for (var item in data) {
+                if (item is Map) {
+                  if (item.containsKey('Line')) {
+                    replies.add(item['Line'].toString());
+                  } else if (item.containsKey('line')) {
+                    replies.add(item['line'].toString());
+                  } else if (item.containsKey('text')) {
+                    replies.add(item['text'].toString());
+                  } else if (item.containsKey('output')) {
+                    replies.add(item['output'].toString());
+                  } else {
+                    replies.add(item.toString().replaceAll(RegExp(r'[{}]'), ''));
+                  }
+                } else if (item is String) {
+                  replies.add(item);
+                } else {
+                  replies.add(item.toString());
+                }
+              }
+            }
+          } else {
+            String rawText = "";
+            if (data is Map) {
+              if (data.containsKey('text')) {
+                rawText = data['text'].toString();
+              } else if (data.containsKey('output')) {
+                rawText = data['output'].toString();
+              } else {
+                rawText = data.toString().replaceAll(RegExp(r'[{}]'), '');
+              }
+            } else {
+              rawText = response.body.replaceAll(RegExp(r'[{}]'), '');
+            }
+
+            if (rawText.isNotEmpty) {
+              replies.addAll(
+                rawText.split('\n').where((line) => line.trim().isNotEmpty),
+              );
+            }
+          }
+
+          if (!renderedDashboard && mounted) {
+            if (replies.isNotEmpty) {
+              setState(() {
+                for (var reply in replies) {
+                  _messages.insert(
+                    0,
+                    ChatMessage(
+                      text: reply.replaceAll('"', '').trim(),
+                      isUser: false,
+                      timestamp: DateTime.now(),
+                    ),
+                  );
+                }
+              });
+            } else {
+              setState(() {
+                _messages.insert(
+                  0,
+                  ChatMessage(
+                    text: response.body.isNotEmpty
+                        ? response.body.replaceAll(RegExp(r'[{}]'), '').replaceAll('"', '').trim()
+                        : "Hello! I am Salma, your Physical Inventory Assistant. How can I help you today?",
+                    isUser: false,
+                    timestamp: DateTime.now(),
+                  ),
+                );
+              });
+            }
+          }
+
+          _saveMessages();
+          _scrollToBottom();
+        } catch (e) {
+          if (mounted) {
+            setState(() {
+              _messages.insert(
+                0,
+                ChatMessage(
+                  text: response.body.replaceAll(RegExp(r'[{}]'), ''),
+                  isUser: false,
+                  timestamp: DateTime.now(),
+                ),
+              );
+            });
+            _saveMessages();
+            _scrollToBottom();
+          }
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: ${response.statusCode}')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load initial chat: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isTyping = false;
+          _typingText = "Salma is typing...";
+        });
+      }
+    }
   }
 
   Future<void> _handleSubmitted(String text) async {
@@ -732,11 +1001,20 @@ class _ChatPhysicalInventoryScreenState extends State<ChatPhysicalInventoryScree
       appBar: AppBar(
         title: Row(
           children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: Colors.grey.shade200,
-              backgroundImage: const AssetImage(
-                'assets/images/Salma_image.jpeg',
+            GestureDetector(
+              onTap: () {
+                _showAvatarImageViewer(
+                  context,
+                  'assets/images/salma_physical_inventory_avatar.jpeg',
+                  'Physical Inventory Agent',
+                );
+              },
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: Colors.grey.shade200,
+                backgroundImage: const AssetImage(
+                  'assets/images/salma_physical_inventory_avatar.jpeg',
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -820,7 +1098,7 @@ class _ChatPhysicalInventoryScreenState extends State<ChatPhysicalInventoryScree
 
   Widget _buildTextComposer() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+      padding: const EdgeInsets.fromLTRB(10.0, 8.0, 10.0, 16.0),
       color: Colors.transparent,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -921,7 +1199,7 @@ class _ChatPhysicalInventoryScreenState extends State<ChatPhysicalInventoryScree
                     radius: 60,
                     backgroundColor: Colors.white10,
                     backgroundImage: const AssetImage(
-                      'assets/images/Salma_image.jpeg',
+                      'assets/images/salma_physical_inventory_avatar.jpeg',
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -944,6 +1222,70 @@ class _ChatPhysicalInventoryScreenState extends State<ChatPhysicalInventoryScree
               ),
             );
           },
+        );
+      },
+    );
+  }
+
+  void _showAvatarImageViewer(BuildContext context, String imagePath, String agentName) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.9),
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.zero,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: double.infinity,
+                  height: double.infinity,
+                  color: Colors.transparent,
+                ),
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          agentName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  InteractiveViewer(
+                    child: Hero(
+                      tag: imagePath,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.asset(
+                          imagePath,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         );
       },
     );
