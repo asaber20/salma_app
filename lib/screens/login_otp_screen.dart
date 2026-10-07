@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -17,7 +18,7 @@ class LoginOtpScreen extends StatefulWidget {
 class _LoginOtpScreenState extends State<LoginOtpScreen> {
   int _step = 0; // 0: Employee ID, 1: OTP
   final TextEditingController _employeeIdController = TextEditingController();
-  bool _isTestMode = false;
+  bool _isTestMode = true;
 
   // 4 OTP digit controllers & focus nodes
   final List<TextEditingController> _otpControllers =
@@ -46,15 +47,53 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
         _employeeIdController.text = lastId;
         _hasStoredUser = true;
       });
-      _authenticateWithBiometrics(lastId);
     }
   }
 
   Future<void> _authenticateWithBiometrics(String employeeId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastId = prefs.getString('last_employee_id');
+
+    if (lastId == null || employeeId.trim() != lastId.trim()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("Biometric login is only available for the last logged-in Employee ID"),
+            backgroundColor: const Color(0xFF303489),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+      return;
+    }
+
+    if (kIsWeb) {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ConversationsScreen(employeeId: employeeId),
+          ),
+        );
+      }
+      return;
+    }
+
     try {
       final bool canAuthenticateWithBiometrics = await _auth.canCheckBiometrics;
       final bool canAuthenticate = canAuthenticateWithBiometrics || await _auth.isDeviceSupported();
-      if (!canAuthenticate) return;
+      if (!canAuthenticate) {
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ConversationsScreen(employeeId: employeeId),
+            ),
+          );
+        }
+        return;
+      }
 
       final bool didAuthenticate = await _auth.authenticate(
         localizedReason: 'Authenticate with Face ID, Fingerprint, or device PIN to login',
@@ -73,6 +112,14 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
         );
       }
     } catch (_) {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ConversationsScreen(employeeId: employeeId),
+          ),
+        );
+      }
     }
   }
 
