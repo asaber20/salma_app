@@ -9,6 +9,7 @@ enum ChatMessageType {
   lineChart,
   physicalDashboard,
   branchReportCard,
+  stockOverviewReport,
 }
 
 class ChatMessage {

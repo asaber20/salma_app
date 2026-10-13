@@ -97,10 +97,6 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
 
       final bool didAuthenticate = await _auth.authenticate(
         localizedReason: 'Authenticate with Face ID, Fingerprint, or device PIN to login',
-        options: const AuthenticationOptions(
-          biometricOnly: false,
-          stickyAuth: true,
-        ),
       );
 
       if (didAuthenticate && mounted) {
@@ -451,7 +447,7 @@ class _LoginOtpScreenState extends State<LoginOtpScreen> {
                           ),
                           const SizedBox(height: 20),
                           Text(
-                            _step == 0 ? "Employee Authentication" : "OTP Verification",
+                            _step == 0 ? "Salma" : "OTP Verification",
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               fontSize: 22,

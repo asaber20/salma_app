@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'chat_physical_inventory_screen.dart';
+import 'chat_stock_overview_screen.dart';
 import 'login_otp_screen.dart';
 
 class ConversationsScreen extends StatefulWidget {
@@ -24,19 +25,26 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
       'isAvailable': true,
     },
     {
+      'name': 'Stock Overview Agent',
+      'preview': 'Tap to open stock levels, suppliers & expiry reports...',
+      'time': 'Live 🟢',
+      'image': 'assets/images/salma_stock_overview_avatar.jpeg',
+      'isAvailable': true,
+    },
+    {
       'name': 'Profitability Analysis Agent',
       'preview': 'Profitability analysis and margin reporting assistant...',
       'time': 'Under development ⏳',
       'image': 'assets/images/Salama_Revenue_Avatar.jpeg',
       'isAvailable': false,
     },
-    {
-      'name': 'PO Approval Agent',
-      'preview': 'Purchase order approval assistant...',
-      'time': 'Under development ⏳',
-      'image': 'assets/images/Salma_PO_approval_avatar.jpeg',
-      'isAvailable': false,
-    },
+   // {
+   //   'name': 'PO Approval Agent',
+   //   'preview': 'Purchase order approval assistant...',
+   //   'time': 'Under development ⏳',
+   //   'image': 'assets/images/Salma_PO_approval_avatar.jpeg',
+   //   'isAvailable': false,
+   // },
   ];
 
   @override
@@ -207,13 +215,14 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                       itemBuilder: (context, index) {
                         final agent = filteredAgents[index];
                         final bool isAvailable = agent['isAvailable'] ?? false;
+                        final String agentName = agent['name'] ?? '';
 
                         return ListTile(
                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           leading: GestureDetector(
                             onTap: () {
                               if (agent['image'] != null) {
-                                _showAvatarImageViewer(context, agent['image'], agent['name']);
+                                _showAvatarImageViewer(context, agent['image'], agentName);
                               }
                             },
                             child: CircleAvatar(
@@ -236,7 +245,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  agent['name'],
+                                  agentName,
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
@@ -268,7 +277,17 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                             ),
                           ),
                           onTap: () {
-                            if (isAvailable) {
+                            if (agentName == 'Stock Overview Agent') {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ChatStockOverviewScreen(
+                                    employeeId: widget.employeeId,
+                                    triggerChatStart: true,
+                                  ),
+                                ),
+                              );
+                            } else if (isAvailable) {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -281,7 +300,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text("${agent['name']} is coming soon!"),
+                                  content: Text("$agentName is coming soon!"),
                                   backgroundColor: const Color(0xFF303489),
                                   behavior: SnackBarBehavior.floating,
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

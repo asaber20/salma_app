@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../models/chat_message.dart';
+import 'chat_stock_overview_report.dart';
 
 const List<Color> kChartPalette = [
   Color(0xFF8045DD), // Purple
@@ -48,7 +49,8 @@ class ChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isDashboard = message.type == ChatMessageType.physicalDashboard ||
-        message.type == ChatMessageType.branchReportCard;
+        message.type == ChatMessageType.branchReportCard ||
+        message.type == ChatMessageType.stockOverviewReport;
 
     return Align(
       alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -103,6 +105,11 @@ class ChatBubble extends StatelessWidget {
                 BranchReportCardWidget(
                   chartData: message.chartData ?? {},
                   branchName: message.chartData?['branchName'] ?? 'Branch',
+                )
+              else if (message.type == ChatMessageType.stockOverviewReport)
+                StockOverviewReportWidget(
+                  chartData: message.chartData ?? {},
+                  reportType: message.text,
                 )
               else if (message.type == ChatMessageType.barChart)
                 _buildBarChart(context)

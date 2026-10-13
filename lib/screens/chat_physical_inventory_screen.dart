@@ -3,8 +3,10 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../models/chat_message.dart';
 import '../widgets/chat_physical_inventory_report.dart';
+import '../config/app_config.dart';
 
 const List<String> preferredBranchOrder = [
   'Riyadh',
@@ -731,10 +733,8 @@ class _ChatPhysicalInventoryScreenState extends State<ChatPhysicalInventoryScree
 
     try {
       final response = await http.get(
-        Uri.parse(
-          'https://n8n.srv1348343.hstgr.cloud/webhook/physical_inventory',
-        ).replace(queryParameters: {
-          'imessage': 'overall progress',
+        Uri.parse(AppConfig.physicalInventoryEndpoint).replace(queryParameters: {
+          'imessage': '[REPORT]',
           'employee_id': widget.employeeId,
         }),
         headers: {'authorization': bearerToken},
@@ -1027,7 +1027,7 @@ class _ChatPhysicalInventoryScreenState extends State<ChatPhysicalInventoryScree
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  'AI Digital Assistant',
+                  'Physical Inventory Assistant',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey.shade600,
@@ -1169,6 +1169,199 @@ class _ChatPhysicalInventoryScreenState extends State<ChatPhysicalInventoryScree
   }
 
   void _showVoiceOverlay(BuildContext context) {
+    if (!AppConfig.enableVoiceRecognition) {
+      _showUnderDevelopmentVoiceOverlay(context);
+      return;
+    }
+
+    final stt.SpeechToText speech = stt.SpeechToText();
+    bool isListening = false;
+    String transcribedText = "Initializing microphone...";
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            void startListening() async {
+              setModalState(() {
+                transcribedText = "Listening... Speak now";
+                isListening = true;
+              });
+
+              await speech.listen(
+                onResult: (result) {
+                  setModalState(() {
+                    transcribedText = result.recognizedWords;
+                  });
+                },
+              );
+
+              setModalState(() {
+                isListening = speech.isListening;
+              });
+            }
+
+            if (!speech.isAvailable && !isListening && transcribedText == "Initializing microphone...") {
+              speech.initialize(
+                onStatus: (status) {
+                  setModalState(() {
+                    isListening = status == 'listening';
+                  });
+                },
+                onError: (error) {
+                  setModalState(() {
+                    transcribedText = "Error: ${error.errorMsg}";
+                    isListening = false;
+                  });
+                },
+              ).then((available) {
+                if (available) {
+                  startListening();
+                } else {
+                  setModalState(() {
+                    transcribedText = "Speech recognition not available";
+                  });
+                }
+              });
+            } else if (speech.isAvailable && !isListening && transcribedText == "Initializing microphone...") {
+              startListening();
+            }
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: Color(0xFF1A1A1A),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: Column(
+                children: [
+                  // Top bar with Cancel and Start Over buttons
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () {
+                            speech.stop();
+                            Navigator.pop(context);
+                          },
+                          icon: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
+                          label: const Text("Cancel", style: TextStyle(color: Colors.white, fontSize: 14)),
+                        ),
+                        TextButton.icon(
+                          onPressed: () async {
+                            await speech.stop();
+                            setModalState(() {
+                              transcribedText = "Listening... Speak now";
+                              isListening = false;
+                            });
+                            await Future.delayed(const Duration(milliseconds: 250));
+                            startListening();
+                          },
+                          icon: const Icon(Icons.refresh_rounded, color: Color(0xFF3CCEFF), size: 18),
+                          label: const Text("Start Over", style: TextStyle(color: Color(0xFF3CCEFF), fontSize: 14)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8045DD).withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF8045DD).withValues(alpha: 0.4)),
+                    ),
+                    child: const Text(
+                      "🎙️ English Voice Recognition",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  CircleAvatar(
+                    radius: 60,
+                    backgroundColor: Colors.white10,
+                    backgroundImage: const AssetImage(
+                      'assets/images/Salma_image.jpeg',
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: Text(
+                      transcribedText,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  const VoiceWaveform(),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          speech.stop();
+                          Navigator.pop(context);
+                        },
+                        icon: const Icon(Icons.cancel_outlined),
+                        label: const Text("Cancel"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey.shade800,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          speech.stop();
+                          if (transcribedText.isNotEmpty && transcribedText != "Listening... Speak now") {
+                            Navigator.pop(context);
+                            _handleSubmitted(transcribedText);
+                          } else {
+                            Navigator.pop(context);
+                          }
+                        },
+                        icon: const Icon(Icons.send_rounded),
+                        label: const Text("Send"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF8045DD),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    ).whenComplete(() {
+      speech.stop();
+    });
+  }
+
+  void _showUnderDevelopmentVoiceOverlay(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1199,7 +1392,7 @@ class _ChatPhysicalInventoryScreenState extends State<ChatPhysicalInventoryScree
                     radius: 60,
                     backgroundColor: Colors.white10,
                     backgroundImage: const AssetImage(
-                      'assets/images/salma_physical_inventory_avatar.jpeg',
+                      'assets/images/Salma_image.jpeg',
                     ),
                   ),
                   const SizedBox(height: 32),
